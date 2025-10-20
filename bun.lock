@@ -1,0 +1,44 @@
+{
+  "lockfileVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "git-manager-lite",
+      "dependencies": {
+        "chalk": "^5.6.2",
+        "prompts": "^2.4.2",
+      },
+      "devDependencies": {
+        "@types/bun": "latest",
+        "@types/prompts": "^2.4.9",
+      },
+      "peerDependencies": {
+        "typescript": "^5",
+      },
+    },
+  },
+  "packages": {
+    "@types/bun": ["@types/bun@1.2.21", "https://pkgs.dev.azure.com/KionMobileAutomation/_packaging/onyx/npm/registry/@types/bun/-/bun-1.2.21.tgz", { "dependencies": { "bun-types": "1.2.21" } }, "sha1-otVVt5CMAcJvakhAfNbJRNnsjRI="],
+
+    "@types/node": ["@types/node@24.3.0", "https://pkgs.dev.azure.com/KionMobileAutomation/_packaging/onyx/npm/registry/@types/node/-/node-24.3.0.tgz", { "dependencies": { "undici-types": "~7.10.0" } }, "sha1-ibCfRcuajuaUZvGO5YZOTD64Tew="],
+
+    "@types/prompts": ["@types/prompts@2.4.9", "https://pkgs.dev.azure.com/KionMobileAutomation/_packaging/onyx/npm/registry/@types/prompts/-/prompts-2.4.9.tgz", { "dependencies": { "@types/node": "*", "kleur": "^3.0.3" } }, "sha1-h3WjHkCtInr1EaoNfxmgRMy9Nx4="],
+
+    "@types/react": ["@types/react@19.1.12", "https://pkgs.dev.azure.com/KionMobileAutomation/_packaging/onyx/npm/registry/@types/react/-/react-19.1.12.tgz", { "dependencies": { "csstype": "^3.0.2" } }, "sha1-e/qnaqu7C0/gSTwho6epPTPok3s="],
+
+    "bun-types": ["bun-types@1.2.21", "https://pkgs.dev.azure.com/KionMobileAutomation/_packaging/onyx/npm/registry/bun-types/-/bun-types-1.2.21.tgz", { "dependencies": { "@types/node": "*" }, "peerDependencies": { "@types/react": "^19" } }, "sha1-fM0E1HZdf6uq74stKIFQMF3/LFY="],
+
+    "chalk": ["chalk@5.6.2", "https://pkgs.dev.azure.com/KionMobileAutomation/_packaging/onyx/npm/registry/chalk/-/chalk-5.6.2.tgz", {}, "sha1-sSOLbiPqM3r3HH+KKV21rwwViuo="],
+
+    "csstype": ["csstype@3.1.3", "https://pkgs.dev.azure.com/KionMobileAutomation/_packaging/onyx/npm/registry/csstype/-/csstype-3.1.3.tgz", {}, "sha1-2A/ylNEU+w5qxQD7+FtgE31+/4E="],
+
+    "kleur": ["kleur@3.0.3", "https://pkgs.dev.azure.com/KionMobileAutomation/_packaging/onyx/npm/registry/kleur/-/kleur-3.0.3.tgz", {}, "sha1-p5yezIbuHOP6YgbRIWxQHxR/wH4="],
+
+    "prompts": ["prompts@2.4.2", "https://pkgs.dev.azure.com/KionMobileAutomation/_packaging/onyx/npm/registry/prompts/-/prompts-2.4.2.tgz", { "dependencies": { "kleur": "^3.0.3", "sisteransi": "^1.0.5" } }, "sha1-e1fnOzpIAprRDr1E90sBcipMsGk="],
+
+    "sisteransi": ["sisteransi@1.0.5", "https://pkgs.dev.azure.com/KionMobileAutomation/_packaging/onyx/npm/registry/sisteransi/-/sisteransi-1.0.5.tgz", {}, "sha1-E01oEpd1ZDfMBcoBNw06elcQde0="],
+
+    "typescript": ["typescript@5.9.2", "https://pkgs.dev.azure.com/KionMobileAutomation/_packaging/onyx/npm/registry/typescript/-/typescript-5.9.2.tgz", { "bin": { "tsc": "./bin/tsc", "tsserver": "./bin/tsserver" } }, "sha1-2TRQzd7FFUotXKvjuBArgzFvsqY="],
+
+    "undici-types": ["undici-types@7.10.0", "https://pkgs.dev.azure.com/KionMobileAutomation/_packaging/onyx/npm/registry/undici-types/-/undici-types-7.10.0.tgz", {}, "sha1-SsLgWM5WtGKwVuYpzGoCOT0/81A="],
+  }
+}

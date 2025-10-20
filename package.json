@@ -1,0 +1,31 @@
+{
+  "name": "git-manager-lite",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "bin": "./bin/gml.exe",
+  "version": "0.2.7",
+  "engines": {
+    "bun": "^1.3.0"
+  },
+  "packageManager": "bun@1.3.0",
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/prompts": "^2.4.9"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "scripts": {
+    "prebuild": "bun install",
+    "bump": "bun pm version patch",
+    "build:exe": "bun run prebuild && bun run build && bun run bump && bun build ./index.ts --target bun --outfile ./bin/gml.exe --compile --minify --sourcemap --bytecode",
+    "build": "bun build ./index.ts --target bun --outfile ./bin/gml.js",
+    "run": "bun run index.ts",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "chalk": "^5.6.2",
+    "prompts": "^2.4.2"
+  }
+}
