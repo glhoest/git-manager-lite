@@ -1,19 +1,83 @@
-import {getDefaultBranch, processReposParallel, runGitAsync} from "./core";
+import {
+    getDefaultBranch,
+    processReposParallel,
+    runGitAsync,
+    stashApply,
+    stashDrop,
+    stashSave,
+    updateRepoState
+} from "./core";
 
-export async function syncRepos() {
+export async function syncRepos(options: {all?: boolean} = {}) {
     await processReposParallel(async (repo) => {
         let buf = `\n=== Syncing ${repo} ===\n`;
-        const log = (line: string) => { /* buffer optional logs if verbose */ };
-        await runGitAsync(repo, ["fetch", "--all"], { onLog: log });
-        await runGitAsync(repo, ["pull"], { onLog: log });
+        const log = (line: string) => {
+            if (line.trim()) buf += line + (line.endsWith("\n") ? "" : "\n");
+        };
 
-        const mainBranch = getDefaultBranch(repo);
-        const currentBranch = (await runGitAsync(repo, ["branch", "--show-current"], { silent: true })).stdout.trim();
+        try {
+            // 1. Fetch
+            await runGitAsync(repo, ["fetch", "--all"], {onLog: log});
 
-        if (currentBranch !== mainBranch) {
-            await runGitAsync(repo, ["fetch", "origin", `${mainBranch}:${mainBranch}`], { onLog: log });
+            // 2. Stash local changes
+            const stash = stashSave(repo, "GML Auto-stash before sync");
+            let stashed = false;
+            if (stash.ok && stash.ref) {
+                stashed = true;
+                log(`Stashed local changes: ${stash.ref}`);
+            }
+
+            // 3. Pull
+            const pullRes = await runGitAsync(repo, ["pull"], {onLog: log});
+
+            // 4. Update default branch if not on it
+            const mainBranch = getDefaultBranch(repo);
+            const currentBranch = (await runGitAsync(repo, ["branch", "--show-current"], {silent: true})).stdout.trim();
+            if (currentBranch !== mainBranch) {
+                await runGitAsync(repo, ["fetch", "origin", `${mainBranch}:${mainBranch}`], {onLog: log});
+            }
+
+            // 5. Re-apply stash
+            let stashError = "";
+            if (stashed) {
+                const apply = stashApply(repo, stash.ref);
+                if (apply.ok) {
+                    log("Re-applied stashed changes.");
+                    stashDrop(repo, stash.ref);
+                } else {
+                    stashError = "Conflict while re-applying stashed changes.";
+                    log(`\n[ERROR] ${stashError}`);
+                }
+            }
+
+            if (pullRes.status === 0 && !stashError) {
+                updateRepoState(repo, {
+                    lastSyncSuccess: true,
+                    lastSyncError: undefined,
+                    lastSyncTime: new Date().toISOString()
+                });
+            } else {
+                const error = stashError || `Pull failed with status ${pullRes.status}`;
+                updateRepoState(repo, {
+                    lastSyncSuccess: false,
+                    lastSyncError: error,
+                    lastSyncTime: new Date().toISOString()
+                });
+            }
+        } catch (e: any) {
+            const msg = e.message || String(e);
+            log(`\n[EXCEPTION] ${msg}`);
+            updateRepoState(repo, {
+                lastSyncSuccess: false,
+                lastSyncError: msg,
+                lastSyncTime: new Date().toISOString()
+            });
         }
 
         return buf;
-    }, { allowFilter: true, emptyMessage: "No git repositories found.", filterPromptTitle: "Select repositories to sync" });
+    }, {
+        allowFilter: !options.all,
+        emptyMessage: "No git repositories found.",
+        filterPromptTitle: "Select repositories to sync"
+    });
 }

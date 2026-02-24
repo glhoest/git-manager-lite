@@ -4,5 +4,6 @@ export { syncRepos } from "./syncRepos.ts";
 export { switchToMain } from "./switchToMain.ts";
 export { listRepos } from "./listRepos.ts";
 export { listVersion } from "./listVersion.ts";
+export { scheduleCommand } from "./schedule.ts";
 export * from "./branches.ts";
 export * from "./cleanupBranches.ts";

@@ -1,5 +1,6 @@
 import {spawn, spawnSync} from "node:child_process";
-import {existsSync, readdirSync} from "node:fs";
+import {homedir} from "node:os";
+import {existsSync, readFileSync, readdirSync, writeFileSync} from "node:fs";
 import {join} from "node:path";
 import prompts from "prompts";
 
@@ -8,6 +9,39 @@ const GML_VERBOSE = ((): boolean => {
     return v === "1" || v === "true" || v === "yes";
 })();
 const ROOT_DIR = process.cwd();
+const STATE_FILE = join(homedir(), ".gml-state.json");
+
+export type RepoState = {
+    lastSyncSuccess?: boolean;
+    lastSyncError?: string;
+    lastSyncTime?: string;
+};
+
+export type GmlState = {
+    repos: Record<string, RepoState>;
+};
+
+export function readState(): GmlState {
+    if (!existsSync(STATE_FILE)) return {repos: {}};
+    try {
+        return JSON.parse(readFileSync(STATE_FILE, "utf-8"));
+    } catch {
+        return {repos: {}};
+    }
+}
+
+export function writeState(state: GmlState) {
+    writeFileSync(STATE_FILE, JSON.stringify(state, null, 2), "utf-8");
+}
+
+export function updateRepoState(repoPath: string, update: Partial<RepoState>) {
+    const state = readState();
+    state.repos[repoPath] = {
+        ...state.repos[repoPath],
+        ...update,
+    };
+    writeState(state);
+}
 
 export function runGit(repoPath: string, gitArgs: string[], silent: boolean = false) {
     if (GML_VERBOSE) {

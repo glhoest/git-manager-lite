@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import chalk from "chalk";
-import {branches, cleanupBranches, listRepos, listVersion, switchToMain, syncRepos} from "./commands";
+import {branches, cleanupBranches, listRepos, listVersion, scheduleCommand, switchToMain, syncRepos} from "./commands";
 
 
 enum Commands {
@@ -11,6 +11,7 @@ enum Commands {
     Ls = 'ls',
     Branches = "branches",
     Cleanup = "cleanup",
+    Schedule = "schedule",
     Version = "version",
     Help = "help"
 }
@@ -64,6 +65,15 @@ const man: Record<Commands, ManPage> & { default: ManPage } = {
         usage: `${CLI_NAME} branches cleanup`,
         options: []
     },
+    [Commands.Schedule]: {
+        description: "Setup and manage a daily sync of all repositories using OS native schedulers.",
+        usage: `${CLI_NAME} schedule <setup|remove|run>`,
+        options: [
+            "setup  — Register a daily sync task",
+            "remove — Remove the sync task",
+            "run    — Manually trigger the scheduled sync logic"
+        ]
+    },
     [Commands.Version]: {
         description: "Show the current CLI version.",
         usage: `${CLI_NAME} version`,
@@ -103,7 +113,7 @@ function showHelp(cmd?: Commands) {
     }
     if (!cmd) {
         console.log("\n" + chalk.bold("Commands:"));
-        const unique = [Commands.Sync, Commands.Main, Commands.Master, Commands.List, Commands.Ls, Commands.Branches, Commands.Cleanup, Commands.Version, Commands.Help];
+        const unique = [Commands.Sync, Commands.Main, Commands.Master, Commands.List, Commands.Ls, Commands.Branches, Commands.Cleanup, Commands.Schedule, Commands.Version, Commands.Help];
         for (const c of unique) {
             const p = man[c];
             console.log(`  ${c.padEnd(8)} - ${p.description}`);
@@ -187,6 +197,9 @@ switch (command) {
         } else {
             branches();
         }
+        break;
+    case Commands.Schedule:
+        scheduleCommand(args.slice(1));
         break;
     case Commands.Version:
         listVersion();

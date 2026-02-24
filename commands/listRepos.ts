@@ -1,9 +1,12 @@
 import chalk from "chalk";
-import {getBranchStatusAsync, processReposParallel} from "./core";
+import {getBranchStatusAsync, processReposParallel, readState} from "./core";
 
 export async function listRepos() {
+    const state = readState();
     await processReposParallel(async (repo) => {
         const status = await getBranchStatusAsync(repo);
+        const repoState = state.repos[repo];
+
         const currentBranch = status.branch;
         const isMain = currentBranch === "main" || currentBranch === "master";
         const isRelease = currentBranch.startsWith("release/") || currentBranch.startsWith("releases/");
@@ -20,6 +23,13 @@ export async function listRepos() {
             ? chalk.yellow(`+${status.uncommitted}`)
             : chalk.gray(`+0`);
 
-        return `\n\n=== ${repo} ===\n${colorized}  ${divergence}  ${uncommitted}`;
-    }, { allowFilter: false, emptyMessage: "No git repositories found." });
+        let syncStatus = "";
+        if (repoState) {
+            if (repoState.lastSyncSuccess === false) {
+                syncStatus = `  ${chalk.bgRed.white(" SYNC FAIL ")} ${chalk.red(repoState.lastSyncError || "unknown error")}`;
+            }
+        }
+
+        return `\n\n=== ${repo} ===\n${colorized}  ${divergence}  ${uncommitted}${syncStatus}`;
+    }, {allowFilter: false, emptyMessage: "No git repositories found."});
 }
