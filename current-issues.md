@@ -1,8 +1,8 @@
 # Quick wins
-- [ ] Switch to main command should filter out repos already on main
-- [ ] Sync command should end with a recap of failed repos
-- [ ] Sync command fetch only mode ( --fetch-only, and alias 'fetch' instead of sync)
-- [ ] include common typos as aliases for commands (e.g. 'sl' as type for 'ls')
+- [x] Switch to main command should filter out repos already on main
+- [x] Sync command should end with a recap of failed repos
+- [x] Sync command fetch only mode ( --fetch-only, and alias 'fetch' instead of sync)
+- [x] include common typos as aliases for commands (e.g. 'sl' as type for 'ls')
 
 # Improvements
 - [x] List command should show status for current branch
