@@ -138,15 +138,9 @@ function validateCommands(arg: (string | undefined)[]): Command[] | undefined {
 const commands = validateCommands(args.map(c=>c?.toLowerCase().trim()));
 
 function showHelp(cmds?: Command[]) {
-  listVersion();
-  const page = cmds ? (man[cmds[cmds.length - 1]!] ?? man.default) : man.default;
-  console.log(`\n${chalk.bold('Description:')} ${page.description}`);
-  console.log(`${chalk.bold('Usage:')} ${page.usage}`);
-  if (page.options?.length) {
-    console.log(chalk.bold('Options:'));
-    for (const opt of page.options) console.log(`  ${opt}`);
-  }
   if (!cmds) {
+    banner();
+    listVersion()
     console.log(`\n${chalk.bold('Commands:')}`);
     const unique = [
       Command.Sync,
@@ -163,6 +157,16 @@ function showHelp(cmds?: Command[]) {
       console.log(`  ${c.padEnd(8)} - ${p.description}`);
       console.log(`    ${chalk.gray(p.usage)}`);
     }
+    return
+  }
+
+  listVersion();
+  const page = cmds ? (man[cmds[cmds.length - 1]!] ?? man.default) : man.default;
+  console.log(`\n${chalk.bold('Description:')} ${page.description}`);
+  console.log(`${chalk.bold('Usage:')} ${page.usage}`);
+  if (page.options?.length) {
+    console.log(chalk.bold('Options:'));
+    for (const opt of page.options) console.log(`  ${opt}`);
   }
 }
 
