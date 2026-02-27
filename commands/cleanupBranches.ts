@@ -66,7 +66,7 @@ function formatInfo(b: BranchInfo): string {
     return `${b.name}${up}${tagStr}`;
 }
 
-export async function cleanupBranches() {
+export async function cleanupBranches(options: { remote?: boolean } = {}) {
     const repos = getRepos();
     if (!repos.length) {
         console.log("No git repositories found.");
@@ -78,7 +78,7 @@ export async function cleanupBranches() {
         const resp = await prompts({
             type: "select",
             name: "repo",
-            message: "Select repository to cleanup branches",
+            message: `Select repository to cleanup ${options.remote ? "remote" : "local"} branches`,
             choices: repos.map((r) => ({ title: r, value: r })),
         }, {
             onCancel: () => true,
@@ -93,48 +93,87 @@ export async function cleanupBranches() {
         return;
     }
 
-    // Fetch for updated gone info
-    runGit(repo, ["fetch", "--all"], true);
-
-    const mainBranch = getDefaultBranch(repo);
-    const res = runGit(repo, ["branch", "-vv", "--no-color"], true);
-    const parsed = parseBranchVV(res.stdout);
-
-    console.log(`\nLocal branches for ${repo}:\n`);
-    for (const b of parsed) {
-        console.log("  - " + formatInfo(b));
+    // Fetch for updated info
+    if (options.remote) {
+        console.log(chalk.gray(`Fetching all and pruning for ${repo}...`));
+        runGit(repo, ["fetch", "--all", "--prune"], true);
+    } else {
+        runGit(repo, ["fetch", "--all"], true);
     }
 
-    // Make choices for deletion
-    const choices = parsed.map((b) => {
-        const disabled = b.isCurrent || b.name === mainBranch;
-        const disableMsg = b.isCurrent
-            ? "cannot delete current"
-            : b.name === mainBranch
-                ? `protected (${mainBranch})`
-                : undefined;
-        return {
-            title: formatInfo(b),
-            value: b.name,
-            disabled,
-            description: disableMsg,
-        } as const;
-    });
-
+    const mainBranch = getDefaultBranch(repo);
     let toDelete: string[] = [];
-    try {
-        const resp = await prompts({
-            type: "multiselect",
-            name: "branches",
-            message: "Select branches to delete",
-            choices,
-            hint: "- Space to select. Enter to confirm",
-            instructions: false,
-        }, { onCancel: () => true });
-        toDelete = (resp.branches ?? []) as string[];
-    } catch {
-        console.log("Prompt cancelled.");
-        return;
+    let parsed: BranchInfo[] = [];
+
+    if (options.remote) {
+        const res = runGit(repo, ["branch", "-r", "--no-color"], true);
+        const lines = res.stdout.split("\n").map(l => l.trim()).filter(l => l.length > 0 && !l.includes("->"));
+        
+        console.log(`\nRemote branches for ${repo}:\n`);
+        lines.forEach(l => console.log(`  - ${l}`));
+
+        const choices = lines.map(name => {
+            const isMain = name.endsWith(`/${mainBranch}`) || name === `origin/${mainBranch}`;
+            return {
+                title: name,
+                value: name,
+                disabled: isMain,
+                description: isMain ? `protected (${mainBranch})` : undefined
+            };
+        });
+
+        try {
+            const resp = await prompts({
+                type: "multiselect",
+                name: "branches",
+                message: "Select REMOTE branches to delete",
+                choices,
+                hint: "- Space to select. Enter to confirm",
+                instructions: false,
+            }, { onCancel: () => true });
+            toDelete = (resp.branches ?? []) as string[];
+        } catch {
+            console.log("Prompt cancelled.");
+            return;
+        }
+    } else {
+        const res = runGit(repo, ["branch", "-vv", "--no-color"], true);
+        parsed = parseBranchVV(res.stdout);
+
+        console.log(`\nLocal branches for ${repo}:\n`);
+        for (const b of parsed) {
+            console.log("  - " + formatInfo(b));
+        }
+
+        const choices = parsed.map((b) => {
+            const disabled = b.isCurrent || b.name === mainBranch;
+            const disableMsg = b.isCurrent
+                ? "cannot delete current"
+                : b.name === mainBranch
+                    ? `protected (${mainBranch})`
+                    : undefined;
+            return {
+                title: formatInfo(b),
+                value: b.name,
+                disabled,
+                description: disableMsg,
+            } as const;
+        });
+
+        try {
+            const resp = await prompts({
+                type: "multiselect",
+                name: "branches",
+                message: "Select local branches to delete",
+                choices,
+                hint: "- Space to select. Enter to confirm",
+                instructions: false,
+            }, { onCancel: () => true });
+            toDelete = (resp.branches ?? []) as string[];
+        } catch {
+            console.log("Prompt cancelled.");
+            return;
+        }
     }
 
     if (!toDelete.length) {
@@ -145,30 +184,46 @@ export async function cleanupBranches() {
     const confirm = await prompts({
         type: "confirm",
         name: "ok",
-        message: `Delete ${toDelete.length} branch(es) in ${repo}?`,
+        message: options.remote 
+            ? chalk.red(`CRITICAL: Delete ${toDelete.length} REMOTE branch(es) from origin? This cannot be easily undone.`)
+            : `Delete ${toDelete.length} local branch(es) in ${repo}?`,
         initial: false,
     }, { onCancel: () => true });
+
     if (!confirm.ok) {
         console.log("Cancelled. No changes made.");
         return;
     }
 
     for (const b of toDelete) {
-        console.log(`Deleting ${b} ...`);
-        const out = runGit(repo, ["branch", "-d", b], true);
-        if (out.status !== 0) {
-            // fallback to force delete only if branch is marked gone
-            const meta = parsed.find((x) => x.name === b);
-            if (meta?.upstreamGone) {
-                console.log(chalk.yellow(`Force deleting '${b}' (upstream gone).`));
-                runGit(repo, ["branch", "-D", b]);
-            } else {
-                console.log(chalk.red(`Failed to delete '${b}'. It may be unmerged.`));
-                // print original stderr
+        if (options.remote) {
+            // b is like "origin/feature/foo"
+            const parts = b.split("/");
+            const remote = parts[0];
+            const branchName = parts.slice(1).join("/");
+            console.log(`Deleting remote branch ${branchName} from ${remote}...`);
+            const out = runGit(repo, ["push", remote, "--delete", branchName], true);
+            if (out.status !== 0) {
+                console.log(chalk.red(`Failed to delete remote branch '${b}'.`));
                 if (out.stderr) process.stderr.write(out.stderr);
+            } else {
+                console.log(chalk.green(`Deleted remote branch '${b}'.`));
             }
         } else {
-            process.stdout.write(out.stdout);
+            console.log(`Deleting ${b} ...`);
+            const out = runGit(repo, ["branch", "-d", b], true);
+            if (out.status !== 0) {
+                const meta = parsed.find((x) => x.name === b);
+                if (meta?.upstreamGone) {
+                    console.log(chalk.yellow(`Force deleting '${b}' (upstream gone).`));
+                    runGit(repo, ["branch", "-D", b]);
+                } else {
+                    console.log(chalk.red(`Failed to delete '${b}'. It may be unmerged.`));
+                    if (out.stderr) process.stderr.write(out.stderr);
+                }
+            } else {
+                process.stdout.write(out.stdout);
+            }
         }
     }
 

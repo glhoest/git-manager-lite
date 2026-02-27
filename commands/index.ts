@@ -7,3 +7,4 @@ export { listVersion } from "./listVersion.ts";
 export { scheduleCommand } from "./schedule.ts";
 export * from "./branches.ts";
 export * from "./cleanupBranches.ts";
+export { manageBranches } from "./manageBranches.ts";

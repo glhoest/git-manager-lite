@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import chalk from "chalk";
-import {branches, cleanupBranches, listRepos, listVersion, scheduleCommand, switchToMain, syncRepos} from "./commands";
+import {branches, cleanupBranches, listRepos, listVersion, manageBranches, scheduleCommand, switchToMain, syncRepos} from "./commands";
 
 
 enum Commands {
@@ -13,6 +13,7 @@ enum Commands {
     Sl = 'sl',
     Branches = "branches",
     Cleanup = "cleanup",
+    Manage = "manage",
     Schedule = "schedule",
     Version = "version",
     Help = "help"
@@ -75,7 +76,14 @@ const man: Record<Commands, ManPage> & { default: ManPage } = {
     },
     [Commands.Cleanup]: {
         description: "virtual subcommand of 'branches' to interactively delete local branches.",
-        usage: `${CLI_NAME} branches cleanup`,
+        usage: `${CLI_NAME} branches cleanup [--remote]`,
+        options: [
+            "--remote — cleanup remote branches instead of local"
+        ]
+    },
+    [Commands.Manage]: {
+        description: "Interactively manage branches (list, filter, switch) for a repository.",
+        usage: `${CLI_NAME} branches manage`,
         options: []
     },
     [Commands.Schedule]: {
@@ -210,7 +218,9 @@ switch (command) {
     case Commands.Branches:
         const sub = args[1]?.toLowerCase().trim();
         if (sub === Commands.Cleanup) {
-            cleanupBranches();
+            cleanupBranches({ remote: args.includes("--remote") });
+        } else if (sub === Commands.Manage) {
+            manageBranches();
         } else {
             branches();
         }
