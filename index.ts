@@ -136,9 +136,9 @@ function showHelp(cmd?: Commands) {
   const page = cmd ? (man[cmd] ?? man.default) : man.default;
   console.log('\n' + chalk.bold('Description:') + ` ${page.description}`);
   console.log(chalk.bold('Usage:') + ` ${page.usage}`);
-  if (page.options && page.options.length) {
+  if (page.options?.length) {
     console.log(chalk.bold('Options:'));
-    for (const opt of page.options) console.log('  ' + opt);
+    for (const opt of page.options) console.log(`  ${opt}`);
   }
   if (!cmd) {
     console.log('\n' + chalk.bold('Commands:'));

@@ -125,7 +125,9 @@ export async function cleanupBranches(options: { remote?: boolean } = {}) {
       .filter((l) => l.length > 0 && !l.includes('->'));
 
     console.log(`\nRemote branches for ${repo}:\n`);
-    lines.forEach((l) => console.log(`  - ${l}`));
+    for (const l of lines) {
+        console.log(`  - ${l}`);
+    }
 
     const choices = lines.map((name) => {
       const isMain =
