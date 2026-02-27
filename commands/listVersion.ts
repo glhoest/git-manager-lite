@@ -1,7 +1,7 @@
-import {version} from "../package.json";
+import {version} from '../package.json';
 
 const version_cache = version;
 
 export function listVersion() {
-    console.log("Current version: ", version_cache);
+  console.log('Current version: ', version_cache);
 }
