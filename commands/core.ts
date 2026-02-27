@@ -132,6 +132,7 @@ export async function processReposParallel<TResult = string>(
         emptyMessage?: string;
         filterPromptTitle?: string;
         skipLogOutput?: boolean;
+        progress?: boolean;
     }
 ): Promise<TResult[] | void> {
     console.log('Reading repositories... (this may take a while if there are many')
@@ -189,12 +190,15 @@ export async function processReposParallel<TResult = string>(
 
     let finished = 0;
 
-    const progress = new SingleBar({}, Presets.shades_classic);
+    let progress:SingleBar | undefined;
+    if (options?.progress) {
+    progress = new SingleBar({}, Presets.shades_classic);
     progress.start(repos.length, 0);
+    }
 
     const outputs = selected.map((repo)=>perRepo(repo).finally(()=>{
         finished++
-        progress.update(finished)
+        progress?.update(finished)
     }))
 
     const results: TResult[] = [];
@@ -206,7 +210,7 @@ export async function processReposParallel<TResult = string>(
             console.log(output)
         }
     }
-    progress.stop();
+    progress?.stop();
     return results;
 }
 

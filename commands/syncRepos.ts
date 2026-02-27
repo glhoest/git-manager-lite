@@ -89,6 +89,7 @@ export async function syncRepos(options: { all?: boolean, fetchOnly?: boolean } 
         }
     }, {
         skipLogOutput: true,
+        progress: true,
         allowFilter: !options.all,
         emptyMessage: "No git repositories found.",
         filterPromptTitle: options.fetchOnly ? "Select repositories to fetch" : "Select repositories to sync",
