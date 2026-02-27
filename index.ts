@@ -83,7 +83,10 @@ const man: Record<Commands, ManPage> & { default: ManPage } = {
     description:
       'Show per-repository local branch statistics (total, stale, no upstream, with upstream).',
     usage: `${CLI_NAME} branches`,
-    options: [],
+    options: [
+        `${Commands.Cleanup} virtual subcommand of 'branches' to interactively delete local branches.`,
+        `${Commands.Manage} Interactively manage branches (list, filter, switch) for a repository.`,
+    ],
   },
   [Commands.Cleanup]: {
     description:

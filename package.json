@@ -24,7 +24,8 @@
     "build:exe": "bun run prebuild && bun run build && bun run bump && bun build ./index.ts --target bun --outfile ./bin/gml.exe --compile --minify --sourcemap --bytecode",
     "build": "bun build ./index.ts --target bun --outfile ./bin/gml.js",
     "run": "bun run index.ts",
-    "check-types": "tsc --noEmit"
+    "check-types": "tsc --noEmit",
+    "lint": "bun run check-types && bun run biome check"
   },
   "dependencies": {
     "chalk": "^5.6.2",
