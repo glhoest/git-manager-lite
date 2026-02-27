@@ -21,7 +21,7 @@
   "scripts": {
     "prebuild": "bun install",
     "bump": "bun pm version patch",
-    "build:exe": "bun run prebuild && bun run build && bun run bump && bun build ./index.ts --target bun --outfile ./bin/gml.exe --compile --minify --sourcemap --bytecode",
+    "build:exe": "bun run build && bun run bump && bun build ./index.ts --target bun --outfile ./bin/gml.exe --compile --minify --sourcemap --bytecode",
     "build": "bun build ./index.ts --target bun --outfile ./bin/gml.js",
     "run": "bun run index.ts",
     "check-types": "tsc --noEmit",
