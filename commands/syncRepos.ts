@@ -88,9 +88,10 @@ export async function syncRepos(options: { all?: boolean, fetchOnly?: boolean } 
             return { repo, success: false, error: msg, buf };
         }
     }, {
+        skipLogOutput: true,
         allowFilter: !options.all,
         emptyMessage: "No git repositories found.",
-        filterPromptTitle: options.fetchOnly ? "Select repositories to fetch" : "Select repositories to sync"
+        filterPromptTitle: options.fetchOnly ? "Select repositories to fetch" : "Select repositories to sync",
     });
 
     if (results && results.length) {

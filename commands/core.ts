@@ -1,6 +1,6 @@
 import {spawn, spawnSync} from "node:child_process";
 import {homedir} from "node:os";
-import {existsSync, readFileSync, readdirSync, writeFileSync} from "node:fs";
+import {existsSync, readdirSync, readFileSync, writeFileSync} from "node:fs";
 import {join} from "node:path";
 import prompts from "prompts";
 
@@ -124,14 +124,15 @@ export function getRepos(): string[] {
  * - Optionally lets the user pre-filter the repositories via an interactive multiselect.
  * - Each per-repo handler returns a fully formatted string buffer to be printed.
  */
-export async function processReposParallel(
-    perRepo: (repo: string) => Promise<string>,
+export async function processReposParallel<TResult = string>(
+    perRepo: (repo: string) => Promise<TResult>,
     options?: {
         allowFilter?: boolean;
         emptyMessage?: string;
         filterPromptTitle?: string;
+        skipLogOutput?: boolean;
     }
-): Promise<void> {
+): Promise<TResult[] | void> {
     console.log('Reading repositories... (this may take a while if there are many')
     const emptyMessage = options?.emptyMessage ?? "No git repositories found.";
     const allowFilter = options?.allowFilter ?? false;
@@ -186,11 +187,14 @@ export async function processReposParallel(
 
     const outputs = selected.map(perRepo)
 
-    const results: any[] = [];
+    const results: TResult[] = [];
     for (const outputPromise of outputs) {
         const output = await outputPromise;
         results.push(output);
-        console.log(output)
+
+        if (!options?.skipLogOutput) {
+            console.log(output)
+        }
     }
     return results;
 }
