@@ -2,6 +2,64 @@ import chalk from 'chalk';
 import prompts from 'prompts';
 import { fetchRepo, getRepos, runGit } from './core';
 
+type DeletedBranchBackup = {
+  branchName: string;
+  sha: string;
+  backupRef: string;
+};
+
+function makeSessionId() {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function sanitizeRefPart(value: string) {
+  return value.replace(/[^A-Za-z0-9/_-]/g, '_');
+}
+
+function createBackupRef(
+  repo: string,
+  branchName: string,
+  sessionId: string,
+): DeletedBranchBackup | null {
+  const revRes = runGit(repo, ['rev-parse', branchName], true);
+  if (revRes.status !== 0) {
+    console.log(chalk.red(`Failed to resolve ${branchName} for backup.`));
+    return null;
+  }
+
+  const sha = revRes.stdout.trim();
+  const backupRef = `refs/safe-delete/${sanitizeRefPart(sessionId)}/${sanitizeRefPart(branchName)}`;
+  const backupRes = runGit(repo, ['update-ref', backupRef, sha], true);
+
+  if (backupRes.status !== 0) {
+    console.log(chalk.red(`Failed to create backup ref for ${branchName}.`));
+    return null;
+  }
+
+  return { branchName, sha, backupRef };
+}
+
+function removeBackupRef(repo: string, backupRef: string) {
+  const res = runGit(repo, ['update-ref', '-d', backupRef], true);
+  return res.status === 0;
+}
+
+function restoreBranchFromBackup(repo: string, backup: DeletedBranchBackup) {
+  const restoreRes = runGit(
+    repo,
+    ['branch', backup.branchName, backup.sha],
+    true,
+  );
+  if (restoreRes.status !== 0) {
+    console.log(chalk.red(`Failed to restore ${backup.branchName}.`));
+    if (restoreRes.stderr) process.stderr.write(restoreRes.stderr);
+    return false;
+  }
+
+  console.log(chalk.green(`Restored ${backup.branchName}.`));
+  return true;
+}
+
 function switchToBranch(branchName: string, isRemote: boolean, repo: string) {
   console.log(`Switching to ${branchName}...`);
   let checkoutName = branchName;
@@ -20,7 +78,12 @@ function switchToBranch(branchName: string, isRemote: boolean, repo: string) {
   }
 }
 
-async function confirmAndDeleteBranch(branchName: string, repo: string) {
+async function confirmAndDeleteBranch(
+  branchName: string,
+  repo: string,
+  sessionId: string,
+  deletedBackups: DeletedBranchBackup[],
+) {
   const confirm = await prompts(
     {
       type: 'confirm',
@@ -35,12 +98,74 @@ async function confirmAndDeleteBranch(branchName: string, repo: string) {
     return;
   }
 
+  const backup = createBackupRef(repo, branchName, sessionId);
+  if (!backup) {
+    return;
+  }
+
   console.log(`Deleting ${branchName}...`);
   const deleteRes = runGit(repo, ['branch', '-D', branchName], true);
   if (deleteRes.status !== 0) {
     console.log(chalk.red(`Failed to delete ${branchName}`));
+    removeBackupRef(repo, backup.backupRef);
   } else {
-    console.log(chalk.green(`Deleted ${branchName}`));
+    deletedBackups.push(backup);
+    console.log(chalk.green(`Deleted ${branchName}.`));
+  }
+}
+
+async function handleExitForDeletedBranches(
+  repo: string,
+  deletedBackups: DeletedBranchBackup[],
+) {
+  if (!deletedBackups.length) return;
+
+  console.log(chalk.yellow('Deleted the following branches:'));
+  for (const record of deletedBackups) {
+    console.log(`- ${record.branchName}`);
+  }
+
+  const response = await prompts(
+    {
+      type: 'select',
+      name: 'action',
+      message: 'Choose an option:',
+      choices: [
+        { title: 'Acknowledge', value: 'ack' },
+        {
+          title: 'Crap, I made an error, help me bring my branch back',
+          value: 'restore',
+        },
+      ],
+    },
+    { onCancel: () => ({ action: 'ack' }) },
+  );
+
+  if (response.action === 'restore') {
+    const restoreResp = await prompts(
+      {
+        type: 'multiselect',
+        name: 'branches',
+        message: 'Select branches to restore',
+        choices: deletedBackups.map((b) => ({
+          title: b.branchName,
+          value: b.branchName,
+        })),
+        min: 1,
+      },
+      { onCancel: () => ({ branches: [] }) },
+    );
+
+    const selected = new Set<string>((restoreResp.branches as string[]) ?? []);
+    for (const backup of deletedBackups) {
+      if (selected.has(backup.branchName)) {
+        restoreBranchFromBackup(repo, backup);
+      }
+    }
+  }
+
+  for (const backup of deletedBackups) {
+    removeBackupRef(repo, backup.backupRef);
   }
 }
 
@@ -74,6 +199,9 @@ export async function manageBranches() {
     console.log('No repository selected. Aborting.');
     return;
   }
+
+  const sessionId = makeSessionId();
+  const deletedBackups: DeletedBranchBackup[] = [];
 
   // Main interaction loop for the selected repo
   while (true) {
@@ -142,8 +270,13 @@ export async function manageBranches() {
 
     const selected = actionResp.branch as string;
 
-    if (selected === '__EXIT__') return;
+    if (selected === '__EXIT__') {
+      await handleExitForDeletedBranches(repo, deletedBackups);
+      return;
+    }
+
     if (selected === '__BACK__') {
+      await handleExitForDeletedBranches(repo, deletedBackups);
       return manageBranches(); // Recursion to go back to repo selection
     }
 
@@ -175,7 +308,12 @@ export async function manageBranches() {
     // Important, keep this switch clean and implement the logic as separate functions
     switch (actionChoice.action) {
       case 'delete':
-        await confirmAndDeleteBranch(branchName, repo);
+        await confirmAndDeleteBranch(
+          branchName,
+          repo,
+          sessionId,
+          deletedBackups,
+        );
         break;
       case 'switch':
         switchToBranch(branchName, isRemote, repo);
