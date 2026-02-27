@@ -1,3 +1,4 @@
+import chalk from "chalk";
 import prompts from "prompts";
 import {
     getDefaultBranch,
@@ -17,7 +18,17 @@ export async function switchToMain() {
         return;
     }
 
-    const choices = repos.map((repo) => ({ title: repo, value: repo, selected: true }));
+    const choices = repos.map((repo) => {
+        const mainBranch = getDefaultBranch(repo);
+        const currentBranch = runGit(repo, ["branch", "--show-current"], true).stdout.trim();
+        const isOnMain = currentBranch === mainBranch;
+        return {
+            title: repo,
+            value: repo,
+            selected: !isOnMain,
+            description: isOnMain ? chalk.gray("(already on " + mainBranch + ")") : undefined
+        };
+    });
 
     let selected: string[] = [];
     try {
