@@ -44,6 +44,10 @@ export function updateRepoState(repoPath: string, update: Partial<RepoState>) {
   writeState(state);
 }
 
+export function fetchRepo(repo:string, silent:boolean = false){
+    const args = ['fetch', '--all'];
+    return runGit(repo, args, silent);
+}
 export function runGit(
   repoPath: string,
   gitArgs: string[],

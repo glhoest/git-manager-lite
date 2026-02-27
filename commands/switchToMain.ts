@@ -1,6 +1,7 @@
 import chalk from 'chalk';
 import prompts from 'prompts';
 import {
+  fetchRepo,
   getDefaultBranch,
   getLocalChanges,
   getRepos,
@@ -165,7 +166,8 @@ export async function switchToMain() {
     }
 
     // Switch to main and hard reset to remote
-    runGit(repo, ['fetch', '--all']);
+
+    fetchRepo(repo)
     runGit(repo, ['checkout', mainBranch]);
     runGit(repo, ['reset', '--hard', `origin/${mainBranch}`]);
 

@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import prompts from 'prompts';
-import { getDefaultBranch, getRepos, runGit } from './core';
+import {fetchRepo, getDefaultBranch, getRepos, runGit} from './core';
 
 type BranchInfo = {
   name: string;
@@ -110,7 +110,7 @@ export async function cleanupBranches(options: { remote?: boolean } = {}) {
     console.log(chalk.gray(`Fetching all and pruning for ${repo}...`));
     runGit(repo, ['fetch', '--all', '--prune'], true);
   } else {
-    runGit(repo, ['fetch', '--all'], true);
+    fetchRepo(repo, true)
   }
 
   const mainBranch = getDefaultBranch(repo);

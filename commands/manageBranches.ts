@@ -1,6 +1,34 @@
 import chalk from 'chalk';
 import prompts from 'prompts';
-import { getRepos, runGit } from './core';
+import { fetchRepo, getRepos, runGit } from './core';
+
+function switchToBranch(branchName: string, isRemote: boolean, repo: string) {
+  console.log(`Switching to ${branchName}...`);
+  let checkoutName = branchName;
+  if (isRemote) {
+    // if it's origin/feature-x, we want to checkout feature-x
+    const parts = branchName.split('/');
+    checkoutName = parts.slice(1).join('/');
+  }
+
+  const out = runGit(repo, ['checkout', checkoutName], true);
+  if (out.status !== 0) {
+    console.log(chalk.red(`Failed to switch to ${checkoutName}`));
+    if (out.stderr) process.stderr.write(out.stderr);
+  } else {
+    console.log(chalk.green(`Switched to ${checkoutName}`));
+  }
+}
+
+function deleteBranch(branchName: string, repo: string) {
+  console.log(`Deleting ${branchName}...`);
+  const deleteRes = runGit(repo, ['branch', '-D', branchName], true);
+  if (deleteRes.status !== 0) {
+    console.log(chalk.red(`Failed to delete ${branchName}`));
+  } else {
+    console.log(chalk.green(`Deleted ${branchName}`));
+  }
+}
 
 export async function manageBranches() {
   const repos = getRepos();
@@ -35,6 +63,7 @@ export async function manageBranches() {
 
   // Main interaction loop for the selected repo
   while (true) {
+    fetchRepo(repo, true);
     const currentBranchRes = runGit(repo, ['branch', '--show-current'], true);
     const currentBranch = currentBranchRes.stdout.trim();
 
@@ -115,6 +144,7 @@ export async function manageBranches() {
 
     const actions = [
       { title: 'Switch to this branch', value: 'switch' },
+      { title: 'Delete this branch', value: 'delete' },
       { title: 'Cancel', value: 'cancel' },
     ];
 
@@ -128,22 +158,17 @@ export async function manageBranches() {
       { onCancel: () => ({ action: 'cancel' }) },
     );
 
-    if (actionChoice.action === 'switch') {
-      console.log(`Switching to ${branchName}...`);
-      let checkoutName = branchName;
-      if (isRemote) {
-        // if it's origin/feature-x, we want to checkout feature-x
-        const parts = branchName.split('/');
-        checkoutName = parts.slice(1).join('/');
-      }
+    switch (actionChoice.action) {
+      case 'delete':
+        deleteBranch(branchName, repo);
+        break;
+      case 'switch':
+        switchToBranch(branchName, isRemote, repo);
+        break;
 
-      const out = runGit(repo, ['checkout', checkoutName], true);
-      if (out.status !== 0) {
-        console.log(chalk.red(`Failed to switch to ${checkoutName}`));
-        if (out.stderr) process.stderr.write(out.stderr);
-      } else {
-        console.log(chalk.green(`Switched to ${checkoutName}`));
-      }
+      case 'cancel': // fallthrough
+      default:
+        break;
     }
   }
 }

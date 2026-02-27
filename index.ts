@@ -127,14 +127,15 @@ const man: Record<Command, ManPage> & { default: ManPage } = {
   },
 };
 
-function validateCommand(arg: string | undefined): Command | undefined {
-  return Object.values<Command>(Command).find((value) => value === arg);
-}
 function validateCommands(arg: (string | undefined)[]): Command[] | undefined {
-  return Object.values<Command>(Command).filter((value) => arg.includes(value));
+  const commands = Object.values<Command>(Command);
+
+  return arg
+      .map(c=> c?.toLowerCase()?.trim())
+      .filter((c) => c !== undefined || c !== '')
+      .filter((c) => commands.includes(c as Command)) as Command[] | undefined;
 }
 
-// const command = validateCommand(args[0]?.toLowerCase().trim());
 const commands = validateCommands(args.map(c=>c?.toLowerCase().trim()));
 
 function showHelp(cmds?: Command[]) {
@@ -214,7 +215,7 @@ if (!commands || commands.length === 0) {
 }
 
 // Support: `gml <command> --help` or `-h`
-if (args.includes('--help') || args.includes('-h')) {
+if (args.includes('--help') || args.includes('-h') || commands.includes(Command.Help)) {
   showHelp(commands);
   process.exit(0);
 }
@@ -224,7 +225,7 @@ if (args.includes('--help') || args.includes('-h')) {
  */
 switch (commands[0]) {
   case Command.Help: {
-    const target = validateCommand(args[1]?.toLowerCase().trim());
+    const target = commands.length > 1 ? commands.slice(1) : undefined;
     showHelp(target);
     break;
   }
