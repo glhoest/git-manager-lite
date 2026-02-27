@@ -2,6 +2,7 @@ import {spawn, spawnSync} from "node:child_process";
 import {homedir} from "node:os";
 import {existsSync, readdirSync, readFileSync, writeFileSync} from "node:fs";
 import {join} from "node:path";
+import {Presets, SingleBar} from "cli-progress";
 import prompts from "prompts";
 
 const GML_VERBOSE = ((): boolean => {
@@ -185,7 +186,16 @@ export async function processReposParallel<TResult = string>(
     //     }
     // };
 
-    const outputs = selected.map(perRepo)
+
+    let finished = 0;
+
+    const progress = new SingleBar({}, Presets.shades_classic);
+    progress.start(repos.length, 0);
+
+    const outputs = selected.map((repo)=>perRepo(repo).finally(()=>{
+        finished++
+        progress.update(finished)
+    }))
 
     const results: TResult[] = [];
     for (const outputPromise of outputs) {
@@ -196,6 +206,7 @@ export async function processReposParallel<TResult = string>(
             console.log(output)
         }
     }
+    progress.stop();
     return results;
 }
 
