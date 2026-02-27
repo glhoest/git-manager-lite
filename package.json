@@ -4,7 +4,7 @@
   "type": "module",
   "private": true,
   "bin": "./bin/gml.exe",
-  "version": "0.2.10",
+  "version": "0.2.11",
   "engines": {
     "bun": "^1.3.0"
   },
