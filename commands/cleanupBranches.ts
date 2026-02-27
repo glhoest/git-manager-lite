@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import prompts from 'prompts';
-import {getDefaultBranch, getRepos, runGit} from './core';
+import { getDefaultBranch, getRepos, runGit } from './core';
 
 type BranchInfo = {
   name: string;

@@ -1,14 +1,14 @@
 import chalk from 'chalk';
 import prompts from 'prompts';
 import {
-    getDefaultBranch,
-    getLocalChanges,
-    getRepos,
-    hasChanges,
-    runGit,
-    stashApply,
-    stashDrop,
-    stashSave,
+  getDefaultBranch,
+  getLocalChanges,
+  getRepos,
+  hasChanges,
+  runGit,
+  stashApply,
+  stashDrop,
+  stashSave,
 } from './core';
 
 export async function switchToMain() {

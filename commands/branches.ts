@@ -1,5 +1,5 @@
 import chalk from 'chalk';
-import {processReposParallel, runGitAsync} from './core';
+import { processReposParallel, runGitAsync } from './core';
 
 type BranchStats = {
   total: number;
@@ -8,9 +8,7 @@ type BranchStats = {
   withUpstream: number;
 };
 
-function parseBranchVV(
-  output: string,
-): {
+function parseBranchVV(output: string): {
   name: string;
   raw: string;
   isCurrent: boolean;

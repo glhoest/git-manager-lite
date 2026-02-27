@@ -1,12 +1,12 @@
 import chalk from 'chalk';
 import {
-    getDefaultBranch,
-    processReposParallel,
-    runGitAsync,
-    stashApply,
-    stashDrop,
-    stashSave,
-    updateRepoState,
+  getDefaultBranch,
+  processReposParallel,
+  runGitAsync,
+  stashApply,
+  stashDrop,
+  stashSave,
+  updateRepoState,
 } from './core';
 
 export async function syncRepos(

@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import prompts from 'prompts';
-import {getRepos, runGit} from './core';
+import { getRepos, runGit } from './core';
 
 export async function manageBranches() {
   const repos = getRepos();

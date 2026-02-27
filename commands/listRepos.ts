@@ -1,5 +1,5 @@
 import chalk from 'chalk';
-import {getBranchStatusAsync, processReposParallel, readState} from './core';
+import { getBranchStatusAsync, processReposParallel, readState } from './core';
 
 export async function listRepos() {
   const state = readState();

@@ -1,8 +1,8 @@
-import {spawnSync} from 'node:child_process';
-import {writeFileSync} from 'node:fs';
-import {homedir, platform} from 'node:os';
-import {join} from 'node:path';
-import {syncRepos} from './syncRepos';
+import { spawnSync } from 'node:child_process';
+import { writeFileSync } from 'node:fs';
+import { homedir, platform } from 'node:os';
+import { join } from 'node:path';
+import { syncRepos } from './syncRepos';
 
 export async function scheduleCommand(args: string[]) {
   const sub = args[0]?.toLowerCase();

@@ -1,8 +1,8 @@
-import {spawn, spawnSync} from 'node:child_process';
-import {existsSync, readdirSync, readFileSync, writeFileSync} from 'node:fs';
-import {homedir} from 'node:os';
-import {join} from 'node:path';
-import {Presets, SingleBar} from 'cli-progress';
+import { spawn, spawnSync } from 'node:child_process';
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
+import { Presets, SingleBar } from 'cli-progress';
 import prompts from 'prompts';
 
 const GML_VERBOSE = ((): boolean => {
