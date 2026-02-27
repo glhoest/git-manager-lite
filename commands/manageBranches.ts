@@ -20,7 +20,21 @@ function switchToBranch(branchName: string, isRemote: boolean, repo: string) {
   }
 }
 
-function deleteBranch(branchName: string, repo: string) {
+async function confirmAndDeleteBranch(branchName: string, repo: string) {
+  const confirm = await prompts(
+    {
+      type: 'confirm',
+      name: 'value',
+      message: `Are you sure you want to delete ${chalk.bold(branchName)} in ${chalk.bold(repo)}?`,
+      initial: false,
+    },
+    { onCancel: () => ({ value: false }) },
+  );
+  if (!confirm.value) {
+    console.log(chalk.gray('Deletion cancelled.'));
+    return;
+  }
+
   console.log(`Deleting ${branchName}...`);
   const deleteRes = runGit(repo, ['branch', '-D', branchName], true);
   if (deleteRes.status !== 0) {
@@ -79,11 +93,11 @@ export async function manageBranches() {
       const isCurrent = line.startsWith('*');
       const cleanLine = line.replace(/^\*\s+/, '');
       // Extract branch name (first token)
-      const name = cleanLine.split(/\s+/)[0];
+      const name = cleanLine.split(/\s+/)[0] || '';
 
       let title = name;
       if (isCurrent) title = chalk.cyan(`* ${name}`);
-      else if (name.startsWith('remotes/')) title = chalk.yellow(name);
+      else if (name?.startsWith('remotes/')) title = chalk.yellow(name);
 
       // Add some metadata if available (like [ahead 1])
       const bracketMatch = cleanLine.match(/\[(.*?)\]/);
@@ -92,8 +106,8 @@ export async function manageBranches() {
       }
 
       return {
-        title: title,
-        value: name,
+        title: title || '',
+        value: name || '',
         description: isCurrent ? '(current)' : undefined,
       };
     });
@@ -158,15 +172,15 @@ export async function manageBranches() {
       { onCancel: () => ({ action: 'cancel' }) },
     );
 
+    // Important, keep this switch clean and implement the logic as separate functions
     switch (actionChoice.action) {
       case 'delete':
-        deleteBranch(branchName, repo);
+        await confirmAndDeleteBranch(branchName, repo);
         break;
       case 'switch':
         switchToBranch(branchName, isRemote, repo);
         break;
 
-      case 'cancel': // fallthrough
       default:
         break;
     }

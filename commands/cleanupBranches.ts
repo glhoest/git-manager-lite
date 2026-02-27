@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import prompts from 'prompts';
-import {fetchRepo, getDefaultBranch, getRepos, runGit} from './core';
+import { fetchRepo, getDefaultBranch, getRepos, runGit } from './core';
 
 type BranchInfo = {
   name: string;
@@ -110,7 +110,7 @@ export async function cleanupBranches(options: { remote?: boolean } = {}) {
     console.log(chalk.gray(`Fetching all and pruning for ${repo}...`));
     runGit(repo, ['fetch', '--all', '--prune'], true);
   } else {
-    fetchRepo(repo, true)
+    fetchRepo(repo, true);
   }
 
   const mainBranch = getDefaultBranch(repo);
@@ -228,7 +228,7 @@ export async function cleanupBranches(options: { remote?: boolean } = {}) {
     if (options.remote) {
       // b is like "origin/feature/foo"
       const parts = b.split('/');
-      const remote = parts[0];
+      const remote = parts[0] || 'origin';
       const branchName = parts.slice(1).join('/');
       console.log(`Deleting remote branch ${branchName} from ${remote}...`);
       const out = runGit(repo, ['push', remote, '--delete', branchName], true);

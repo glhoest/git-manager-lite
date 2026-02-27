@@ -39,7 +39,7 @@ async function setupSchedule() {
   // If we're running as a compiled bun exe, scriptPath is the exe.
   // If we're running via `bun index.ts`, scriptPath is index.ts.
   // We want the command that can be executed.
-  const command = scriptPath.endsWith('.ts')
+  const command = (scriptPath || '').endsWith('.ts')
     ? `"${exePath}" "${scriptPath}" schedule run`
     : `"${scriptPath}" schedule run`;
 
