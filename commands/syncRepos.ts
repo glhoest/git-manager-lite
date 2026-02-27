@@ -111,10 +111,10 @@ export async function syncRepos(
     },
   );
 
-  if (results && results.length) {
+  if (results?.length) {
     const failures = results.filter((r) => r && !r.success);
     if (failures.length) {
-      console.log('\n' + chalk.red.bold('Recap of failed repositories:'));
+      console.log(`\n${chalk.red.bold('Recap of failed repositories:')}`);
       for (const f of failures) {
         console.log(chalk.red(`- ${f.repo}: ${f.error}`));
       }

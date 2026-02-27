@@ -60,7 +60,7 @@ function setupWindows(command: string) {
   // Using schtasks
   // Escape quotes for CMD/Powershell context
   const escapedCommand = command.replace(/"/g, '\\"');
-  const cmd = `schtasks /create /tn "${taskName}" /tr "${escapedCommand}" /sc daily /st 10:00 /f`;
+  const _cmd = `schtasks /create /tn "${taskName}" /tr "${escapedCommand}" /sc daily /st 10:00 /f`;
   const res = spawnSync(
     'schtasks',
     [
@@ -149,8 +149,7 @@ function setupLinux(command: string) {
         .filter((line) => !line.includes('gml schedule run'))
         .join('\n');
     }
-    newCron +=
-      (newCron.endsWith('\n') || newCron === '' ? '' : '\n') + cronJob + '\n';
+    newCron += `${(newCron.endsWith('\n') || newCron === '' ? '' : '\n') + cronJob}\n`;
 
     writeFileSync(tempCron, newCron);
     const res = spawnSync('crontab', [tempCron]);
@@ -193,7 +192,7 @@ async function removeSchedule() {
         .split('\n')
         .filter((line) => !line.includes('gml schedule run'))
         .join('\n');
-      writeFileSync('/tmp/gml_cron_rem', newCron + '\n');
+      writeFileSync('/tmp/gml_cron_rem', `${newCron}\n`);
       spawnSync('crontab', ['/tmp/gml_cron_rem']);
       console.log('✅ Linux crontab entry removed.');
     }

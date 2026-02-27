@@ -140,7 +140,7 @@ export async function processReposParallel<TResult = string>(
     skipLogOutput?: boolean;
     progress?: boolean;
   },
-): Promise<TResult[] | void> {
+): Promise<TResult[] | undefined> {
   console.log(
     'Reading repositories... (this may take a while if there are many',
   );
@@ -234,7 +234,7 @@ export function getDefaultBranch(repoPath: string): string {
   });
   if (res.status === 0 && res.stdout) {
     const match = res.stdout.trim().match(/refs\/remotes\/origin\/(.+)$/);
-    if (match && match[1]) return match[1];
+    if (match?.[1]) return match[1];
   }
   // fallback
   return existsSync(join(repoPath, '.git', 'refs', 'heads', 'main'))
@@ -371,7 +371,7 @@ export function stashApply(
   repoPath: string,
   stashRef?: string,
 ): { ok: boolean } {
-  const target = stashRef && stashRef.length ? stashRef : undefined;
+  const target = stashRef?.length ? stashRef : undefined;
   const apply = runGit(
     repoPath,
     target ? ['stash', 'apply', target] : ['stash', 'apply'],
@@ -381,7 +381,6 @@ export function stashApply(
 }
 
 export function stashDrop(repoPath: string, stashRef?: string) {
-  if (stashRef && stashRef.length)
-    runGit(repoPath, ['stash', 'drop', stashRef], true);
+  if (stashRef?.length) runGit(repoPath, ['stash', 'drop', stashRef], true);
   else runGit(repoPath, ['stash', 'drop'], true);
 }

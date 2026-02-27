@@ -126,7 +126,7 @@ export async function cleanupBranches(options: { remote?: boolean } = {}) {
 
     console.log(`\nRemote branches for ${repo}:\n`);
     for (const l of lines) {
-        console.log(`  - ${l}`);
+      console.log(`  - ${l}`);
     }
 
     const choices = lines.map((name) => {
@@ -163,7 +163,7 @@ export async function cleanupBranches(options: { remote?: boolean } = {}) {
 
     console.log(`\nLocal branches for ${repo}:\n`);
     for (const b of parsed) {
-      console.log('  - ' + formatInfo(b));
+      console.log(`  - ${formatInfo(b)}`);
     }
 
     const choices = parsed.map((b) => {

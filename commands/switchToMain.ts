@@ -31,7 +31,7 @@ export async function switchToMain() {
       value: repo,
       selected: !isOnMain,
       description: isOnMain
-        ? chalk.gray('(already on ' + mainBranch + ')')
+        ? chalk.gray(`(already on ${mainBranch})`)
         : undefined,
     };
   });
@@ -96,7 +96,7 @@ export async function switchToMain() {
       if (changes.length) {
         console.log(`[${repo}] Local changes:`);
         for (const line of changes.slice(0, 50)) {
-          console.log('  ' + line);
+          console.log(`  ${line}`);
         }
         if (changes.length > 50)
           console.log(`  ... and ${changes.length - 50} more`);

@@ -59,7 +59,7 @@ export async function manageBranches() {
       // Add some metadata if available (like [ahead 1])
       const bracketMatch = cleanLine.match(/\[(.*?)\]/);
       if (bracketMatch) {
-        title += ` ${chalk.gray('[' + bracketMatch[1] + ']')}`;
+        title += ` ${chalk.gray(`[${bracketMatch[1]}]`)}`;
       }
 
       return {

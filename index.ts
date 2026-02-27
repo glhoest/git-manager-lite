@@ -134,14 +134,14 @@ function showHelp(cmd?: Commands) {
   banner();
   listVersion();
   const page = cmd ? (man[cmd] ?? man.default) : man.default;
-  console.log('\n' + chalk.bold('Description:') + ` ${page.description}`);
-  console.log(chalk.bold('Usage:') + ` ${page.usage}`);
+  console.log(`\n${chalk.bold('Description:')} ${page.description}`);
+  console.log(`${chalk.bold('Usage:')} ${page.usage}`);
   if (page.options?.length) {
     console.log(chalk.bold('Options:'));
     for (const opt of page.options) console.log(`  ${opt}`);
   }
   if (!cmd) {
-    console.log('\n' + chalk.bold('Commands:'));
+    console.log(`\n${chalk.bold('Commands:')}`);
     const unique = [
       Commands.Sync,
       Commands.Fetch,
