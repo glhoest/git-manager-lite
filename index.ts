@@ -11,7 +11,7 @@ import {
   syncRepos,
 } from './commands';
 
-enum Commands {
+enum Command {
   Sync = 'sync',
   Fetch = 'fetch',
   Main = 'main',
@@ -36,8 +36,8 @@ type ManPage = {
   usage: string;
   options?: string[];
 };
-const man: Record<Commands, ManPage> & { default: ManPage } = {
-  [Commands.Sync]: {
+const man: Record<Command, ManPage> & { default: ManPage } = {
+  [Command.Sync]: {
     description:
       'Fetch and pull the latest changes for all repositories under the current directory (including CWD if it is a git repo).',
     usage: `${CLI_NAME} sync [--fetch-only]`,
@@ -46,61 +46,61 @@ const man: Record<Commands, ManPage> & { default: ManPage } = {
       'GML_VERBOSE=1 ... — show underlying git commands',
     ],
   },
-  [Commands.Fetch]: {
+  [Command.Fetch]: {
     description: "Alias of 'sync --fetch-only'.",
     usage: `${CLI_NAME} fetch`,
     options: [],
   },
-  [Commands.Main]: {
+  [Command.Main]: {
     description:
       'Interactively switch selected repositories to their default branch (main or master) and hard reset to origin/DEFAULT.',
     usage: `${CLI_NAME} main [--help]`,
     options: ['--help, -h — show help for this command'],
   },
-  [Commands.Master]: {
+  [Command.Master]: {
     description: "Alias of 'main' — see help for main.",
     usage: `${CLI_NAME} master`,
     options: [],
   },
-  [Commands.List]: {
+  [Command.List]: {
     description:
       'List repositories and show their current branches in color (green=main/master, red=release/*, yellow=other).',
     usage: `${CLI_NAME} list`,
     options: [],
   },
-  [Commands.Ls]: {
+  [Command.Ls]: {
     description:
       "Alias of 'list' — list repositories and their current branch.",
     usage: `${CLI_NAME} ls`,
     options: [],
   },
-  [Commands.Sl]: {
+  [Command.Sl]: {
     description: "Alias of 'list' (common typo).",
     usage: `${CLI_NAME} sl`,
     options: [],
   },
-  [Commands.Branches]: {
+  [Command.Branches]: {
     description:
       'Show per-repository local branch statistics (total, stale, no upstream, with upstream).',
     usage: `${CLI_NAME} branches`,
     options: [
-        `${Commands.Cleanup.padEnd(15)} - virtual subcommand of 'branches' to interactively delete local branches.`,
-        `${Commands.Manage.padEnd(15)} - Interactively manage branches (list, filter, switch) for a repository.`,
+        `${Command.Cleanup.padEnd(10)} - virtual subcommand of 'branches' to interactively delete local branches.`,
+        `${Command.Manage.padEnd(10)} - Interactively manage branches (list, filter, switch) for a repository.`,
     ],
   },
-  [Commands.Cleanup]: {
+  [Command.Cleanup]: {
     description:
       "virtual subcommand of 'branches' to interactively delete local branches.",
     usage: `${CLI_NAME} branches cleanup [--remote]`,
     options: ['--remote — cleanup remote branches instead of local'],
   },
-  [Commands.Manage]: {
+  [Command.Manage]: {
     description:
       'Interactively manage branches (list, filter, switch) for a repository.',
     usage: `${CLI_NAME} branches manage`,
     options: [],
   },
-  [Commands.Schedule]: {
+  [Command.Schedule]: {
     description:
       'Setup and manage a daily sync of all repositories using OS native schedulers.',
     usage: `${CLI_NAME} schedule <setup|remove|run>`,
@@ -110,12 +110,12 @@ const man: Record<Commands, ManPage> & { default: ManPage } = {
       'run    — Manually trigger the scheduled sync logic',
     ],
   },
-  [Commands.Version]: {
+  [Command.Version]: {
     description: 'Show the current CLI version.',
     usage: `${CLI_NAME} version`,
     options: [],
   },
-  [Commands.Help]: {
+  [Command.Help]: {
     description: 'Show help for the CLI or a specific command.',
     usage: `${CLI_NAME} help [command]`,
     options: ['-h, --help — show general help or help for a command'],
@@ -123,37 +123,40 @@ const man: Record<Commands, ManPage> & { default: ManPage } = {
   default: {
     description: 'Git Manager Lite — manage multiple repos quickly.',
     usage: `${CLI_NAME} <command> [options]`,
-    options: [`Commands: ${Object.values(Commands).join(', ')}`],
+    options: [`Commands: ${Object.values(Command).join(', ')}`],
   },
 };
 
-function validateCommand(arg: string | undefined): Commands | undefined {
-  return Object.values<Commands>(Commands).find((value) => value === arg);
+function validateCommand(arg: string | undefined): Command | undefined {
+  return Object.values<Command>(Command).find((value) => value === arg);
+}
+function validateCommands(arg: (string | undefined)[]): Command[] | undefined {
+  return Object.values<Command>(Command).filter((value) => arg.includes(value));
 }
 
-const command = validateCommand(args[0]?.toLowerCase().trim());
+// const command = validateCommand(args[0]?.toLowerCase().trim());
+const commands = validateCommands(args.map(c=>c?.toLowerCase().trim()));
 
-function showHelp(cmd?: Commands) {
-  banner();
+function showHelp(cmds?: Command[]) {
   listVersion();
-  const page = cmd ? (man[cmd] ?? man.default) : man.default;
+  const page = cmds ? (man[cmds[cmds.length - 1]!] ?? man.default) : man.default;
   console.log(`\n${chalk.bold('Description:')} ${page.description}`);
   console.log(`${chalk.bold('Usage:')} ${page.usage}`);
   if (page.options?.length) {
     console.log(chalk.bold('Options:'));
     for (const opt of page.options) console.log(`  ${opt}`);
   }
-  if (!cmd) {
+  if (!cmds) {
     console.log(`\n${chalk.bold('Commands:')}`);
     const unique = [
-      Commands.Sync,
-      Commands.Fetch,
-      Commands.Main,
-      Commands.List,
-      Commands.Branches,
-      Commands.Schedule,
-      Commands.Version,
-      Commands.Help,
+      Command.Sync,
+      Command.Fetch,
+      Command.Main,
+      Command.List,
+      Command.Branches,
+      Command.Schedule,
+      Command.Version,
+      Command.Help,
     ];
     for (const c of unique) {
       const p = man[c];
@@ -201,59 +204,59 @@ function banner() {
   );
 }
 
-if (!command) {
+if (!commands || commands.length === 0) {
   showHelp();
   process.exit(1);
 }
 
 // Support: `gml <command> --help` or `-h`
 if (args.includes('--help') || args.includes('-h')) {
-  showHelp(command);
+  showHelp(commands);
   process.exit(0);
 }
 
 /**
  * Warning: THERE IS NO TOP LEVEL AWAIT, unhandled promises are expected but we must be careful
  */
-switch (command) {
-  case Commands.Help: {
+switch (commands[0]) {
+  case Command.Help: {
     const target = validateCommand(args[1]?.toLowerCase().trim());
     showHelp(target);
     break;
   }
-  case Commands.Sync:
-  case Commands.Fetch:
+  case Command.Sync:
+  case Command.Fetch:
     syncRepos({
-      fetchOnly: command === Commands.Fetch || args.includes('--fetch-only'),
+      fetchOnly: commands.includes(Command.Fetch) || args.includes('--fetch-only'),
     });
     break;
-  case Commands.Main:
-  case Commands.Master:
+  case Command.Main:
+  case Command.Master:
     switchToMain();
     break;
-  case Commands.List:
-  case Commands.Ls:
-  case Commands.Sl:
+  case Command.List:
+  case Command.Ls:
+  case Command.Sl:
     listRepos();
     break;
-  case Commands.Branches: {
+  case Command.Branches: {
     const sub = args[1]?.toLowerCase().trim();
-    if (sub === Commands.Cleanup) {
+    if (sub === Command.Cleanup) {
       cleanupBranches({ remote: args.includes('--remote') });
-    } else if (sub === Commands.Manage) {
+    } else if (sub === Command.Manage) {
       manageBranches();
     } else {
       branches();
     }
     break;
   }
-  case Commands.Schedule:
+  case Command.Schedule:
     scheduleCommand(args.slice(1));
     break;
-  case Commands.Version:
+  case Command.Version:
     listVersion();
     break;
   default:
-    console.error(`Unknown command: ${command}`);
+    console.error(`Unknown command: ${commands.join(' ')}`);
     process.exit(1);
 }
