@@ -5,10 +5,12 @@ import {branches, cleanupBranches, listRepos, listVersion, scheduleCommand, swit
 
 enum Commands {
     Sync = "sync",
+    Fetch = "fetch",
     Main = "main",
     Master = "master",
     List = "list",
     Ls = 'ls',
+    Sl = 'sl',
     Branches = "branches",
     Cleanup = "cleanup",
     Schedule = "schedule",
@@ -28,10 +30,16 @@ type ManPage = {
 const man: Record<Commands, ManPage> & { default: ManPage } = {
     [Commands.Sync]: {
         description: "Fetch and pull the latest changes for all repositories under the current directory (including CWD if it is a git repo).",
-        usage: `${CLI_NAME} sync`,
+        usage: `${CLI_NAME} sync [--fetch-only]`,
         options: [
+            "--fetch-only — only fetch, do not pull",
             "GML_VERBOSE=1 ... — show underlying git commands"
         ]
+    },
+    [Commands.Fetch]: {
+        description: "Alias of 'sync --fetch-only'.",
+        usage: `${CLI_NAME} fetch`,
+        options: []
     },
     [Commands.Main]: {
         description: "Interactively switch selected repositories to their default branch (main or master) and hard reset to origin/DEFAULT.",
@@ -53,6 +61,11 @@ const man: Record<Commands, ManPage> & { default: ManPage } = {
     [Commands.Ls]: {
         description: "Alias of 'list' — list repositories and their current branch.",
         usage: `${CLI_NAME} ls`,
+        options: []
+    },
+    [Commands.Sl]: {
+        description: "Alias of 'list' (common typo).",
+        usage: `${CLI_NAME} sl`,
         options: []
     },
     [Commands.Branches]: {
@@ -113,7 +126,7 @@ function showHelp(cmd?: Commands) {
     }
     if (!cmd) {
         console.log("\n" + chalk.bold("Commands:"));
-        const unique = [Commands.Sync, Commands.Main, Commands.Master, Commands.List, Commands.Ls, Commands.Branches, Commands.Cleanup, Commands.Schedule, Commands.Version, Commands.Help];
+        const unique = [Commands.Sync, Commands.Fetch, Commands.Main, Commands.List, Commands.Branches, Commands.Schedule, Commands.Version, Commands.Help];
         for (const c of unique) {
             const p = man[c];
             console.log(`  ${c.padEnd(8)} - ${p.description}`);
@@ -180,7 +193,10 @@ switch (command) {
         break;
     }
     case Commands.Sync:
-        syncRepos();
+    case Commands.Fetch:
+        syncRepos({
+            fetchOnly: command === Commands.Fetch || args.includes("--fetch-only")
+        });
         break;
     case Commands.Main:
     case Commands.Master:
@@ -188,6 +204,7 @@ switch (command) {
         break;
     case Commands.List:
     case Commands.Ls:
+    case Commands.Sl:
         listRepos();
         break;
     case Commands.Branches:

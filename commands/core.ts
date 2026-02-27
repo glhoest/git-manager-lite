@@ -186,10 +186,13 @@ export async function processReposParallel(
 
     const outputs = selected.map(perRepo)
 
+    const results: any[] = [];
     for (const outputPromise of outputs) {
         const output = await outputPromise;
+        results.push(output);
         console.log(output)
     }
+    return results;
 }
 
 export function getDefaultBranch(repoPath: string): string {
