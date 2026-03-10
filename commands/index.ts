@@ -13,5 +13,6 @@ export { listRepos } from './listRepos.ts';
 export { listVersion } from './listVersion.ts';
 export { manageBranches } from './manageBranches.ts';
 export { scheduleCommand } from './schedule.ts';
+export { cleanGmlStashes, listGmlStashes } from './stashes.ts';
 export { switchToMain } from './switchToMain.ts';
 export { syncRepos } from './syncRepos.ts';

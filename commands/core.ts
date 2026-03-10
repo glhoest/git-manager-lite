@@ -5,6 +5,8 @@ import { join } from 'node:path';
 import { Presets, SingleBar } from 'cli-progress';
 import prompts from 'prompts';
 
+export const GML_STASH_PREFIX = 'GML:sync:';
+
 const GML_VERBOSE = ((): boolean => {
   const v = String(process.env.GML_VERBOSE ?? '').toLowerCase();
   return v === '1' || v === 'true' || v === 'yes';
@@ -362,13 +364,22 @@ export function stashSave(
 ): { ok: boolean; ref?: string } {
   const save = runGit(repoPath, ['stash', 'push', '-u', '-m', message], true);
   if (save.status !== 0) return { ok: false };
-  const latest = runGit(
-    repoPath,
-    ['stash', 'list', '--format=%gd', '-n', '1'],
-    true,
-  );
-  const ref = latest.status === 0 ? latest.stdout.trim() : undefined;
-  return { ok: Boolean(ref), ref };
+  // When there is nothing to stash, git exits 0 but outputs "No local changes to save".
+  // In that case we must not touch any pre-existing stash the user may have.
+  const combined = save.stdout + save.stderr;
+  if (combined.includes('No local changes to save')) return { ok: true };
+  // Find the stash by searching for our exact message in the stash list,
+  // rather than blindly grabbing stash@{0} which could be the user's own stash.
+  const list = runGit(repoPath, ['stash', 'list', '--format=%gd\t%s'], true);
+  const ref =
+    list.status === 0
+      ? list.stdout
+          .split(/\r?\n/)
+          .find((l) => l.includes(message))
+          ?.split('\t')[0]
+          ?.trim()
+      : undefined;
+  return { ok: true, ref };
 }
 
 export function stashApply(

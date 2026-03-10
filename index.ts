@@ -2,7 +2,9 @@
 import chalk from 'chalk';
 import {
   branches,
+  cleanGmlStashes,
   cleanupBranches,
+  listGmlStashes,
   listRepos,
   listVersion,
   manageBranches,
@@ -22,6 +24,8 @@ enum Command {
   Branches = 'branches',
   Cleanup = 'cleanup',
   Manage = 'manage',
+  Stashes = 'stashes',
+  Clean = 'clean',
   Schedule = 'schedule',
   Version = 'version',
   Help = 'help',
@@ -54,8 +58,10 @@ const man: Record<Command, ManPage> & { default: ManPage } = {
   [Command.Main]: {
     description:
       'Interactively switch selected repositories to their default branch (main or master) and hard reset to origin/DEFAULT.',
-    usage: `${CLI_NAME} main [--help]`,
-    options: ['--help, -h — show help for this command'],
+    usage: `${CLI_NAME} main [--force|-f]`,
+    options: [
+      '--force, -f — skip prompts, discard local changes, and hard-reset every selected repo to origin/main',
+    ],
   },
   [Command.Master]: {
     description: "Alias of 'main' — see help for main.",
@@ -98,6 +104,19 @@ const man: Record<Command, ManPage> & { default: ManPage } = {
     description:
       'Interactively manage branches (list, filter, switch) for a repository.',
     usage: `${CLI_NAME} branches manage`,
+    options: [],
+  },
+  [Command.Stashes]: {
+    description:
+      'List or clean up GML auto-stashes left behind by interrupted sync operations.',
+    usage: `${CLI_NAME} stashes [clean]`,
+    options: [
+      `${Command.Clean.padEnd(10)} - Drop all GML auto-stashes (with confirmation)`,
+    ],
+  },
+  [Command.Clean]: {
+    description: 'Drop all GML auto-stashes across all repositories.',
+    usage: `${CLI_NAME} stashes clean`,
     options: [],
   },
   [Command.Schedule]: {
@@ -149,6 +168,7 @@ function showHelp(cmds?: Command[]) {
       Command.Main,
       Command.List,
       Command.Branches,
+      Command.Stashes,
       Command.Schedule,
       Command.Version,
       Command.Help,
@@ -237,7 +257,7 @@ switch (commands[0]) {
     break;
   case Command.Main:
   case Command.Master:
-    switchToMain();
+    switchToMain({ force: args.includes('--force') || args.includes('-f') });
     break;
   case Command.List:
   case Command.Ls:
@@ -252,6 +272,15 @@ switch (commands[0]) {
       manageBranches();
     } else {
       branches();
+    }
+    break;
+  }
+  case Command.Stashes: {
+    const sub = args[1]?.toLowerCase().trim();
+    if (sub === Command.Clean) {
+      cleanGmlStashes();
+    } else {
+      listGmlStashes();
     }
     break;
   }

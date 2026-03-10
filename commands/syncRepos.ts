@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import {
+  GML_STASH_PREFIX,
   getDefaultBranch,
   processReposParallel,
   runGitAsync,
@@ -12,6 +13,9 @@ import {
 export async function syncRepos(
   options: { all?: boolean; fetchOnly?: boolean } = {},
 ) {
+  const sessionId = Math.random().toString(36).slice(2, 10);
+  const stashMessage = `${GML_STASH_PREFIX}${sessionId}`;
+
   const results = await processReposParallel(
     async (repo) => {
       let buf = `\n=== ${options.fetchOnly ? 'Fetching' : 'Syncing'} ${repo} ===\n`;
@@ -32,8 +36,9 @@ export async function syncRepos(
           return { repo, success: true, buf };
         }
 
-        // 2. Stash local changes
-        const stash = stashSave(repo, 'GML Auto-stash before sync');
+        // 2. Stash local changes under a session-scoped name so we never
+        //    accidentally touch a stash the user created themselves.
+        const stash = stashSave(repo, stashMessage);
         let stashed = false;
         if (stash.ok && stash.ref) {
           stashed = true;

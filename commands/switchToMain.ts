@@ -12,7 +12,7 @@ import {
   stashSave,
 } from './core';
 
-export async function switchToMain() {
+export async function switchToMain(options: { force?: boolean } = {}) {
   const repos = getRepos();
   if (repos.length === 0) {
     console.log('No git repositories found.');
@@ -92,6 +92,15 @@ export async function switchToMain() {
     let mode: 'continue' | 'stash' | 'reset' = 'continue';
     let stashRef: string | undefined;
 
+    if (options.force) {
+      // --force: skip all prompts, discard local changes and hard-reset to remote
+      fetchRepo(repo);
+      runGit(repo, ['checkout', '-f', mainBranch]);
+      runGit(repo, ['reset', '--hard', `origin/${mainBranch}`]);
+      console.log(`[${repo}] Force-reset to origin/${mainBranch}.`);
+      continue;
+    }
+
     if (hasChanges(repo)) {
       const changes = getLocalChanges(repo);
       if (changes.length) {
@@ -166,8 +175,7 @@ export async function switchToMain() {
     }
 
     // Switch to main and hard reset to remote
-
-    fetchRepo(repo)
+    fetchRepo(repo);
     runGit(repo, ['checkout', mainBranch]);
     runGit(repo, ['reset', '--hard', `origin/${mainBranch}`]);
 
