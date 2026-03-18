@@ -7,6 +7,7 @@ export {
   getDefaultBranch,
   getRepos,
   hasChanges,
+  initPreset,
   runGit,
 } from './core.ts';
 export { listRepos } from './listRepos.ts';

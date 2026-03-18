@@ -4,6 +4,7 @@ import {
   branches,
   cleanGmlStashes,
   cleanupBranches,
+  initPreset,
   listGmlStashes,
   listRepos,
   listVersion,
@@ -34,6 +35,16 @@ enum Command {
 const CLI_NAME = 'gml';
 
 const args = Bun.argv.slice(2);
+
+// Parse --preset <name> (supports --preset=<name> and --preset <name>)
+function parsePresetArg(rawArgs: string[]): string | undefined {
+  for (let i = 0; i < rawArgs.length; i++) {
+    const a = rawArgs[i];
+    if (a?.startsWith('--preset=')) return a.slice('--preset='.length);
+    if (a === '--preset') return rawArgs[i + 1];
+  }
+  return undefined;
+}
 
 type ManPage = {
   description: string;
@@ -90,8 +101,8 @@ const man: Record<Command, ManPage> & { default: ManPage } = {
       'Show per-repository local branch statistics (total, stale, no upstream, with upstream).',
     usage: `${CLI_NAME} branches`,
     options: [
-        `${Command.Cleanup.padEnd(10)} - virtual subcommand of 'branches' to interactively delete local branches.`,
-        `${Command.Manage.padEnd(10)} - Interactively manage branches (list, filter, switch) for a repository.`,
+      `${Command.Cleanup.padEnd(10)} - virtual subcommand of 'branches' to interactively delete local branches.`,
+      `${Command.Manage.padEnd(10)} - Interactively manage branches (list, filter, switch) for a repository.`,
     ],
   },
   [Command.Cleanup]: {
@@ -141,8 +152,12 @@ const man: Record<Command, ManPage> & { default: ManPage } = {
   },
   default: {
     description: 'Git Manager Lite — manage multiple repos quickly.',
-    usage: `${CLI_NAME} <command> [options]`,
-    options: [`Commands: ${Object.values(Command).join(', ')}`],
+    usage: `${CLI_NAME} <command> [--preset <name>] [options]`,
+    options: [
+      `Commands: ${Object.values(Command).join(', ')}`,
+      '--preset <name> — filter repositories to those in the named preset (defined in .gml)',
+      '--preset *      — bypass the defaultPreset and run against all repositories',
+    ],
   },
 };
 
@@ -150,17 +165,17 @@ function validateCommands(arg: (string | undefined)[]): Command[] | undefined {
   const commands = Object.values<Command>(Command);
 
   return arg
-      .map(c=> c?.toLowerCase()?.trim())
-      .filter((c) => c !== undefined || c !== '')
-      .filter((c) => commands.includes(c as Command)) as Command[] | undefined;
+    .map((c) => c?.toLowerCase()?.trim())
+    .filter((c) => c !== undefined || c !== '')
+    .filter((c) => commands.includes(c as Command)) as Command[] | undefined;
 }
 
-const commands = validateCommands(args.map(c=>c?.toLowerCase().trim()));
+const commands = validateCommands(args.map((c) => c?.toLowerCase().trim()));
 
 function showHelp(cmds?: Command[]) {
   if (!cmds) {
     banner();
-    listVersion()
+    listVersion();
     console.log(`\n${chalk.bold('Commands:')}`);
     const unique = [
       Command.Sync,
@@ -178,11 +193,13 @@ function showHelp(cmds?: Command[]) {
       console.log(`  ${c.padEnd(8)} - ${p.description}`);
       console.log(`    ${chalk.gray(p.usage)}`);
     }
-    return
+    return;
   }
 
   listVersion();
-  const page = cmds ? (man[cmds[cmds.length - 1]!] ?? man.default) : man.default;
+  const page = cmds
+    ? (man[cmds[cmds.length - 1]!] ?? man.default)
+    : man.default;
   console.log(`\n${chalk.bold('Description:')} ${page.description}`);
   console.log(`${chalk.bold('Usage:')} ${page.usage}`);
   if (page.options?.length) {
@@ -235,10 +252,18 @@ if (!commands || commands.length === 0) {
 }
 
 // Support: `gml <command> --help` or `-h`
-if (args.includes('--help') || args.includes('-h') || commands.includes(Command.Help)) {
+if (
+  args.includes('--help') ||
+  args.includes('-h') ||
+  commands.includes(Command.Help)
+) {
   showHelp(commands);
   process.exit(0);
 }
+
+// Resolve preset from --preset arg (or defaultPreset from .gml config).
+// Must run before any command so getRepos() is filtered correctly.
+initPreset(parsePresetArg(args));
 
 /**
  * Warning: THERE IS NO TOP LEVEL AWAIT, unhandled promises are expected but we must be careful
@@ -252,7 +277,8 @@ switch (commands[0]) {
   case Command.Sync:
   case Command.Fetch:
     syncRepos({
-      fetchOnly: commands.includes(Command.Fetch) || args.includes('--fetch-only'),
+      fetchOnly:
+        commands.includes(Command.Fetch) || args.includes('--fetch-only'),
     });
     break;
   case Command.Main:

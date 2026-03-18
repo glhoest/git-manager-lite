@@ -1,7 +1,7 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { Presets, SingleBar } from 'cli-progress';
 import prompts from 'prompts';
 
@@ -13,6 +13,84 @@ const GML_VERBOSE = ((): boolean => {
 })();
 const ROOT_DIR = process.cwd();
 const STATE_FILE = join(homedir(), '.gml-state.json');
+const CONFIG_FILE = join(ROOT_DIR, '.gml');
+
+// --- Config types ---
+
+export type GmlConfig = {
+  defaultPreset?: string;
+  presets: Record<string, string[]>;
+};
+
+// --- Config loading ---
+
+export function loadConfig(): GmlConfig | null {
+  if (!existsSync(CONFIG_FILE)) return null;
+  try {
+    const raw = readFileSync(CONFIG_FILE, 'utf-8');
+    return JSON.parse(raw) as GmlConfig;
+  } catch {
+    console.error(
+      `[gml] Failed to parse .gml config file. Ensure it is valid JSON.`,
+    );
+    process.exit(1);
+  }
+}
+
+// --- Preset resolution (module-level, set once by index.ts via initPreset) ---
+
+let _activePreset: string | null = null; // null = no preset, '*' = bypass default
+
+/**
+ * Called once from index.ts after parsing --preset.
+ * presetArg: the value of --preset, or undefined if not provided.
+ */
+export function initPreset(presetArg: string | undefined): void {
+  const config = loadConfig();
+
+  // --preset * => explicitly bypass any defaultPreset
+  if (presetArg === '*') {
+    _activePreset = null;
+    return;
+  }
+
+  if (presetArg !== undefined) {
+    // Explicit --preset <name>
+    if (!config) {
+      console.error(
+        '[gml] --preset was specified but no .gml config file was found in the current directory.',
+      );
+      process.exit(1);
+    }
+    if (!(presetArg in config.presets)) {
+      const available = Object.keys(config.presets);
+      console.error(
+        `[gml] Unknown preset "${presetArg}".` +
+          (available.length
+            ? ` Available presets: ${available.map((p) => `"${p}"`).join(', ')}.`
+            : ' No presets are defined in .gml.'),
+      );
+      process.exit(1);
+    }
+    _activePreset = presetArg;
+    return;
+  }
+
+  // No --preset arg — fall back to defaultPreset if defined
+  if (config?.defaultPreset) {
+    if (!(config.defaultPreset in config.presets)) {
+      const available = Object.keys(config.presets);
+      console.error(
+        `[gml] defaultPreset "${config.defaultPreset}" is not defined in presets.` +
+          (available.length
+            ? ` Available presets: ${available.map((p) => `"${p}"`).join(', ')}.`
+            : ' No presets are defined in .gml.'),
+      );
+      process.exit(1);
+    }
+    _activePreset = config.defaultPreset;
+  }
+}
 
 export type RepoState = {
   lastSyncSuccess?: boolean;
@@ -46,9 +124,9 @@ export function updateRepoState(repoPath: string, update: Partial<RepoState>) {
   writeState(state);
 }
 
-export function fetchRepo(repo:string, silent:boolean = false){
-    const args = ['fetch', '--all'];
-    return runGit(repo, args, silent);
+export function fetchRepo(repo: string, silent: boolean = false) {
+  const args = ['fetch', '--all'];
+  return runGit(repo, args, silent);
 }
 export function runGit(
   repoPath: string,
@@ -128,7 +206,20 @@ export function getRepos(): string[] {
   }
 
   // Always order alphabetically for stable output
-  return repos.sort((a, b) => a.localeCompare(b));
+  const sorted = repos.sort((a, b) => a.localeCompare(b));
+
+  if (_activePreset === null) return sorted;
+
+  // Apply preset filter — config is guaranteed to exist because initPreset validated it
+  const config = loadConfig();
+  const allowed = new Set(config?.presets[_activePreset] ?? []);
+  const filtered = sorted.filter((p) => allowed.has(basename(p)));
+
+  console.log(
+    `[preset: ${_activePreset}] Filtering to ${filtered.length} of ${sorted.length} repositories.`,
+  );
+
+  return filtered;
 }
 
 /**
