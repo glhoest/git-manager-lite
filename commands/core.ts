@@ -37,6 +37,10 @@ export function loadConfig(): GmlConfig | null {
   }
 }
 
+export function saveConfig(config: GmlConfig) {
+  writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf-8');
+}
+
 // --- Preset resolution (module-level, set once by index.ts via initPreset) ---
 
 let _activePreset: string | null = null; // null = no preset, '*' = bypass default

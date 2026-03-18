@@ -4,6 +4,7 @@ import {
   branches,
   cleanGmlStashes,
   cleanupBranches,
+  configCommand, // Add this
   initPreset,
   listGmlStashes,
   listRepos,
@@ -30,6 +31,7 @@ enum Command {
   Schedule = 'schedule',
   Version = 'version',
   Help = 'help',
+  Config = 'config', // Add this
 }
 
 const CLI_NAME = 'gml';
@@ -150,6 +152,18 @@ const man: Record<Command, ManPage> & { default: ManPage } = {
     usage: `${CLI_NAME} help [command]`,
     options: ['-h, --help — show general help or help for a command'],
   },
+  [Command.Config]: {
+    description: 'Manage GML configuration (.gml file) and presets.',
+    usage: `${CLI_NAME} config <subcommand>`,
+    options: [
+      'init            — create an empty .gml config file if none exists',
+      'presets list [name] — list all (or a specific) defined presets',
+      'presets add       — interactively create a new preset',
+      'presets edit      — interactively edit an existing preset',
+      'presets delete    — interactively delete a preset',
+      'presets default   — interactively set or clear the default preset',
+    ],
+  },
   default: {
     description: 'Git Manager Lite — manage multiple repos quickly.',
     usage: `${CLI_NAME} <command> [--preset <name>] [options]`,
@@ -185,6 +199,7 @@ function showHelp(cmds?: Command[]) {
       Command.Branches,
       Command.Stashes,
       Command.Schedule,
+      Command.Config, // Add this
       Command.Version,
       Command.Help,
     ];
@@ -315,6 +330,9 @@ switch (commands[0]) {
     break;
   case Command.Version:
     listVersion();
+    break;
+  case Command.Config:
+    configCommand(args.slice(1));
     break;
   default:
     console.error(`Unknown command: ${commands.join(' ')}`);

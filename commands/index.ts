@@ -2,6 +2,7 @@
 
 export * from './branches.ts';
 export * from './cleanupBranches.ts';
+export { configCommand } from './config.ts';
 export {
   createTempCommit,
   getDefaultBranch,
@@ -9,6 +10,7 @@ export {
   hasChanges,
   initPreset,
   runGit,
+  saveConfig,
 } from './core.ts';
 export { listRepos } from './listRepos.ts';
 export { listVersion } from './listVersion.ts';
