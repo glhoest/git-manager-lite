@@ -6,16 +6,42 @@ import { type GmlConfig, getRepos, loadConfig, saveConfig } from './core';
 
 const CONFIG_FILE_PATH = join(process.cwd(), '.gml');
 
+function configMan() {
+  console.log(chalk.bold('Usage: gml config <subcommand>'));
+  console.log('\nAvailable subcommands:');
+  console.log('  init              Create a new .gml config file');
+  console.log('  presets           Manage repository presets');
+  console.log('\nRun "gml config presets" for preset management options.');
+}
+
+function presetsMan() {
+  console.log(chalk.bold('Usage: gml config presets <subcommand>'));
+  console.log('\nAvailable subcommands:');
+  console.log(
+    '  list [name]       List all presets or details of a specific preset',
+  );
+  console.log('  add               Add a new preset');
+  console.log('  edit              Edit an existing preset');
+  console.log('  delete            Delete a preset');
+  console.log('  default           Set or clear the default preset');
+}
+
 export async function configCommand(args: string[]) {
-  const subcommand = args[0];
-  const subsubcommand = args[1];
+  const subcommand = args[0] ?? '';
+  const subsubcommand = args[1] ?? '';
 
   switch (subcommand) {
+    case '':
+      configMan();
+      break;
     case 'init':
       await initConfig();
       break;
     case 'presets':
       switch (subsubcommand) {
+        case '':
+          presetsMan();
+          break;
         case 'list':
           listPresets(args[2]);
           break;
