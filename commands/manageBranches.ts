@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import prompts from 'prompts';
-import { fetchRepo, getRepos, runGit } from './core';
+import { fetchRepo, getRepos, runGit, updateRepoState } from './core';
 
 type DeletedBranchBackup = {
   branchName: string;
@@ -291,6 +291,7 @@ export async function manageBranches() {
 
     const actions = [
       { title: 'Switch to this branch', value: 'switch' },
+      { title: "Mark as 'default' branch", value: 'set-default' },
       { title: 'Delete this branch', value: 'delete' },
       { title: 'Cancel', value: 'cancel' },
     ];
@@ -307,6 +308,14 @@ export async function manageBranches() {
 
     // Important, keep this switch clean and implement the logic as separate functions
     switch (actionChoice.action) {
+      case 'set-default':
+        updateRepoState(repo, { customDefaultBranch: branchName });
+        console.log(
+          chalk.green(
+            `Marked ${chalk.bold(branchName)} as the default/protected branch for ${chalk.bold(repo)}.`,
+          ),
+        );
+        break;
       case 'delete':
         await confirmAndDeleteBranch(
           branchName,

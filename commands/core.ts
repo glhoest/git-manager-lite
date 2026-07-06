@@ -100,6 +100,7 @@ export type RepoState = {
   lastSyncSuccess?: boolean;
   lastSyncError?: string;
   lastSyncTime?: string;
+  customDefaultBranch?: string;
 };
 
 export type GmlState = {
@@ -329,6 +330,10 @@ export async function processReposParallel<TResult = string>(
 }
 
 export function getDefaultBranch(repoPath: string): string {
+  const state = readState();
+  const custom = state.repos[repoPath]?.customDefaultBranch;
+  if (custom) return custom;
+
   const res = spawnSync('git', ['symbolic-ref', 'refs/remotes/origin/HEAD'], {
     cwd: repoPath,
     encoding: 'utf-8',
