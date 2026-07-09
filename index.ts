@@ -20,24 +20,49 @@ enum Command {
   Sync = 'sync',
   Fetch = 'fetch',
   Main = 'main',
-  Master = 'master',
   List = 'list',
-  Ls = 'ls',
-  Sl = 'sl',
   Branches = 'branches',
-  Cleanup = 'cleanup',
-  Manage = 'manage',
   Stashes = 'stashes',
-  Clean = 'clean',
   Schedule = 'schedule',
-  Version = 'version',
-  Help = 'help',
   Config = 'config',
   Serve = 'serve',
-  Sevre = 'sevre',
-  Daemon = 'daemon',
-  Deamon = 'deamon',
-  Demon = 'demon',
+  Version = 'version',
+  Help = 'help',
+}
+
+enum BranchesSubcommand {
+  Cleanup = 'cleanup',
+  Manage = 'manage',
+}
+
+enum StashesSubcommand {
+  Clean = 'clean',
+}
+
+enum ScheduleSubcommand {
+  Setup = 'setup',
+  Remove = 'remove',
+  Run = 'run',
+}
+
+enum ConfigSubcommand {
+  Init = 'init',
+  Presets = 'presets',
+}
+
+// Aliases shown in help output
+const ALIASES: Record<string, Command> = {
+  master: Command.Main,
+  ls: Command.List,
+  daemon: Command.Serve,
+}
+
+// Typo tolerance — silently accepted, never shown in help
+const HIDDEN_ALIASES: Record<string, Command> = {
+  sl: Command.List,
+  sevre: Command.Serve,
+  deamon: Command.Serve,
+  demon: Command.Serve,
 }
 
 const CLI_NAME = 'gml';
@@ -70,7 +95,7 @@ const man: Record<Command, ManPage> & { default: ManPage } = {
     ],
   },
   [Command.Fetch]: {
-    description: "Alias of 'sync --fetch-only'.",
+    description: "Shorthand for 'sync --fetch-only'. Fetches all remotes without pulling.",
     usage: `${CLI_NAME} fetch`,
     options: [],
   },
@@ -82,61 +107,28 @@ const man: Record<Command, ManPage> & { default: ManPage } = {
       '--force, -f — skip prompts, discard local changes, and hard-reset every selected repo to origin/main',
     ],
   },
-  [Command.Master]: {
-    description: "Alias of 'main' — see help for main.",
-    usage: `${CLI_NAME} master`,
-    options: [],
-  },
   [Command.List]: {
     description:
       'List repositories and show their current branches in color (green=main/master, red=release/*, yellow=other).',
     usage: `${CLI_NAME} list`,
     options: [],
   },
-  [Command.Ls]: {
-    description:
-      "Alias of 'list' — list repositories and their current branch.",
-    usage: `${CLI_NAME} ls`,
-    options: [],
-  },
-  [Command.Sl]: {
-    description: "Alias of 'list' (common typo).",
-    usage: `${CLI_NAME} sl`,
-    options: [],
-  },
   [Command.Branches]: {
     description:
       'Show per-repository local branch statistics (total, stale, no upstream, with upstream).',
-    usage: `${CLI_NAME} branches`,
+    usage: `${CLI_NAME} branches [cleanup|manage]`,
     options: [
-      `${Command.Cleanup.padEnd(10)} - virtual subcommand of 'branches' to interactively delete local branches.`,
-      `${Command.Manage.padEnd(10)} - Interactively manage branches (list, filter, switch) for a repository.`,
+      'cleanup [--remote] — interactively delete local branches (use --remote for remote branches)',
+      'manage             — interactively manage branches (list, filter, switch)',
     ],
-  },
-  [Command.Cleanup]: {
-    description:
-      "virtual subcommand of 'branches' to interactively delete local branches.",
-    usage: `${CLI_NAME} branches cleanup [--remote]`,
-    options: ['--remote — cleanup remote branches instead of local'],
-  },
-  [Command.Manage]: {
-    description:
-      'Interactively manage branches (list, filter, switch) for a repository.',
-    usage: `${CLI_NAME} branches manage`,
-    options: [],
   },
   [Command.Stashes]: {
     description:
       'List or clean up GML auto-stashes left behind by interrupted sync operations.',
     usage: `${CLI_NAME} stashes [clean]`,
     options: [
-      `${Command.Clean.padEnd(10)} - Drop all GML auto-stashes (with confirmation)`,
+      'clean — Drop all GML auto-stashes (with confirmation)',
     ],
-  },
-  [Command.Clean]: {
-    description: 'Drop all GML auto-stashes across all repositories.',
-    usage: `${CLI_NAME} stashes clean`,
-    options: [],
   },
   [Command.Schedule]: {
     description:
@@ -166,26 +158,6 @@ const man: Record<Command, ManPage> & { default: ManPage } = {
       '--no-open      — do not auto-open browser',
     ],
   },
-  [Command.Sevre]: {
-    description: "Alias of 'serve' (common typo).",
-    usage: `${CLI_NAME} sevre [--port <number>] [--no-open]`,
-    options: [],
-  },
-  [Command.Daemon]: {
-    description: "Alias of 'serve'.",
-    usage: `${CLI_NAME} daemon [--port <number>] [--no-open]`,
-    options: [],
-  },
-  [Command.Deamon]: {
-    description: "Alias of 'serve' (common typo).",
-    usage: `${CLI_NAME} deamon [--port <number>] [--no-open]`,
-    options: [],
-  },
-  [Command.Demon]: {
-    description: "Alias of 'serve' (common typo).",
-    usage: `${CLI_NAME} demon [--port <number>] [--no-open]`,
-    options: [],
-  },
   [Command.Config]: {
     description: 'Manage GML configuration (.gml file) and presets.',
     usage: `${CLI_NAME} config <subcommand>`,
@@ -209,52 +181,48 @@ const man: Record<Command, ManPage> & { default: ManPage } = {
   },
 };
 
-function validateCommands(arg: (string | undefined)[]): Command[] | undefined {
-  const commands = Object.values<Command>(Command);
-
-  return arg
-    .map((c) => c?.toLowerCase()?.trim())
-    .filter((c) => c !== undefined || c !== '')
-    .filter((c) => commands.includes(c as Command)) as Command[] | undefined;
+function resolveCommand(raw: string): Command | undefined {
+  const lower = raw.toLowerCase().trim()
+  const canonicals = Object.values(Command) as string[]
+  if (canonicals.includes(lower)) return lower as Command
+  return ALIASES[lower] ?? HIDDEN_ALIASES[lower]
 }
 
-const commands = validateCommands(args.map((c) => c?.toLowerCase().trim()));
+function getAliasesForCommand(cmd: Command): string[] {
+  return Object.entries(ALIASES)
+    .filter(([, target]) => target === cmd)
+    .map(([alias]) => alias)
+}
 
-function showHelp(cmds?: Command[]) {
-  if (!cmds) {
+const resolvedCommand = resolveCommand(args[0] ?? '')
+
+function showHelp(cmd?: Command) {
+  if (!cmd) {
     banner();
     listVersion();
     console.log(`\n${chalk.bold('Commands:')}`);
-    const unique = [
-      Command.Sync,
-      Command.Fetch,
-      Command.Main,
-      Command.List,
-      Command.Branches,
-      Command.Stashes,
-      Command.Schedule,
-      Command.Config,
-      Command.Serve,
-      Command.Version,
-      Command.Help,
-    ];
-    for (const c of unique) {
+    const canonicals = Object.values(Command) as Command[]
+    for (const c of canonicals) {
       const p = man[c];
-      console.log(`  ${c.padEnd(8)} - ${p.description}`);
+      const aliases = getAliasesForCommand(c)
+      const aliasStr = aliases.length > 0 ? chalk.gray(` [aliases: ${aliases.join(', ')}]`) : ''
+      console.log(`  ${c.padEnd(8)} - ${p.description}${aliasStr}`);
       console.log(`    ${chalk.gray(p.usage)}`);
     }
     return;
   }
 
   listVersion();
-  const page = cmds
-    ? (man[cmds[cmds.length - 1]!] ?? man.default)
-    : man.default;
+  const page = man[cmd] ?? man.default;
   console.log(`\n${chalk.bold('Description:')} ${page.description}`);
   console.log(`${chalk.bold('Usage:')} ${page.usage}`);
   if (page.options?.length) {
     console.log(chalk.bold('Options:'));
     for (const opt of page.options) console.log(`  ${opt}`);
+  }
+  const aliases = getAliasesForCommand(cmd)
+  if (aliases.length > 0) {
+    console.log(`${chalk.bold('Aliases:')} ${aliases.join(', ')}`);
   }
 }
 
@@ -296,18 +264,14 @@ function banner() {
   );
 }
 
-if (!commands || commands.length === 0) {
+if (!resolvedCommand) {
   showHelp();
   process.exit(1);
 }
 
 // Support: `gml <command> --help` or `-h`
-if (
-  args.includes('--help') ||
-  args.includes('-h') ||
-  commands.includes(Command.Help)
-) {
-  showHelp(commands);
+if (args.includes('--help') || args.includes('-h')) {
+  showHelp(resolvedCommand ?? undefined);
   process.exit(0);
 }
 
@@ -318,65 +282,66 @@ initPreset(parsePresetArg(args));
 /**
  * Warning: THERE IS NO TOP LEVEL AWAIT, unhandled promises are expected but we must be careful
  */
-switch (commands[0]) {
-  case Command.Help: {
-    const target = commands.length > 1 ? commands.slice(1) : undefined;
-    showHelp(target);
+switch (resolvedCommand!) {
+  case Command.Help:
+    showHelp();
     break;
-  }
+
   case Command.Sync:
   case Command.Fetch:
     syncRepos({
       fetchOnly:
-        commands.includes(Command.Fetch) || args.includes('--fetch-only'),
+        resolvedCommand === Command.Fetch || args.includes('--fetch-only'),
     });
     break;
+
   case Command.Main:
-  case Command.Master:
     switchToMain({ force: args.includes('--force') || args.includes('-f') });
     break;
+
   case Command.List:
-  case Command.Ls:
-  case Command.Sl:
     listRepos();
     break;
+
   case Command.Branches: {
     const sub = args[1]?.toLowerCase().trim();
-    if (sub === Command.Cleanup) {
+    if (sub === BranchesSubcommand.Cleanup) {
       cleanupBranches({ remote: args.includes('--remote') });
-    } else if (sub === Command.Manage) {
+    } else if (sub === BranchesSubcommand.Manage) {
       manageBranches();
     } else {
       branches();
     }
     break;
   }
+
   case Command.Stashes: {
     const sub = args[1]?.toLowerCase().trim();
-    if (sub === Command.Clean) {
+    if (sub === StashesSubcommand.Clean) {
       cleanGmlStashes();
     } else {
       listGmlStashes();
     }
     break;
   }
+
   case Command.Schedule:
     scheduleCommand(args.slice(1));
     break;
-  case Command.Version:
-    listVersion();
-    break;
+
   case Command.Config:
     configCommand(args.slice(1));
     break;
+
   case Command.Serve:
-  case Command.Sevre:
-  case Command.Daemon:
-  case Command.Deamon:
-  case Command.Demon:
     serveCommand(args.slice(1));
     break;
+
+  case Command.Version:
+    listVersion();
+    break;
+
   default:
-    console.error(`Unknown command: ${commands.join(' ')}`);
+    console.error(`Unknown command: ${args[0]}`);
     process.exit(1);
 }
