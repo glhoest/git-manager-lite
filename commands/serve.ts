@@ -51,14 +51,16 @@ export async function serveCommand(args: string[]) {
   process.on('SIGINT', cleanup)
   process.on('SIGTERM', cleanup)
 
-  // Locate ui/index.html on disk (dev mode) or rely on Bun's embedded file system (exe mode)
-  // Dev mode: serve from ui/dist/ (built output). Exe mode: Bun has it embedded.
-  const uiDistDir = join(cwd, 'ui', 'dist')
+  // Locate ui/dist/ relative to the exe/script, not CWD.
+  // import.meta.dir is the directory containing gml.exe (or index.ts in dev).
+  const exeDir = import.meta.dir
+  const uiDistDir = join(exeDir, 'ui', 'dist')
   const uiDiskPath = join(uiDistDir, 'index.html')
   const uiExists = existsSync(uiDiskPath)
 
   // biome-ignore lint/suspicious/noExplicitAny: isStandaloneExecutable added in newer Bun, not in current @types/bun
-  if (!uiExists && !(Bun as any).isStandaloneExecutable) {
+  const isExe = !!(Bun as any).isStandaloneExecutable
+  if (!uiExists && !isExe) {
     console.error('[gml serve] ui/dist/index.html not found. Run "bun run build:ui" first.')
     process.exit(1)
   }
