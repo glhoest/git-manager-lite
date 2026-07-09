@@ -23,7 +23,7 @@
     "prebuild": "bun install",
     "bump": "bun pm version patch",
     "build:ui": "bunx tailwindcss -i ./ui/src/globals.css -o ./ui/src/globals.compiled.css --minify && bun build ./ui/index.html --outdir ./ui/dist --target browser --minify",
-    "build": "bun run build:ui && bun build ./index.ts --target bun --outfile ./bin/gml.js",
+    "build": "bun build ./index.ts --target bun --outfile ./bin/gml.js",
     "build:exe": "bun run build && bun run bump && bun build ./index.ts --target bun --outfile ./bin/gml.exe --compile --minify --sourcemap --bytecode",
     "serve": "bun run index.ts serve",
     "run": "bun run index.ts",

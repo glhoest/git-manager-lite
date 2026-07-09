@@ -1,7 +1,9 @@
-import { existsSync, writeFileSync, rmSync } from 'node:fs'
+import { writeFileSync, rmSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { spawnSync } from 'node:child_process'
+// @ts-ignore — Bun HTML import bundled at compile time; no TS types for this
+import index from '../ui/index.html'
 
 const DAEMON_STATE_FILE = join(homedir(), '.gml-daemon.json')
 
@@ -51,41 +53,12 @@ export async function serveCommand(args: string[]) {
   process.on('SIGINT', cleanup)
   process.on('SIGTERM', cleanup)
 
-  // Locate ui/dist/ relative to the exe/script, not CWD.
-  // import.meta.dir is the directory containing gml.exe (or index.ts in dev).
-  const exeDir = import.meta.dir
-  const uiDistDir = join(exeDir, 'ui', 'dist')
-  const uiDiskPath = join(uiDistDir, 'index.html')
-  const uiExists = existsSync(uiDiskPath)
-
-  // biome-ignore lint/suspicious/noExplicitAny: isStandaloneExecutable added in newer Bun, not in current @types/bun
-  const isExe = !!(Bun as any).isStandaloneExecutable
-  if (!uiExists && !isExe) {
-    console.error('[gml serve] ui/dist/index.html not found. Run "bun run build:ui" first.')
-    process.exit(1)
-  }
-
   const server = Bun.serve({
     port,
     hostname: '127.0.0.1',
-    fetch(req) {
-      const url = new URL(req.url)
-
-      // API routes
-      if (url.pathname === '/api/status') return statusResponse(state)
-
-      // Serve static assets (JS/CSS bundles) from ui/dist/
-      if (uiExists && url.pathname !== '/' && url.pathname !== '') {
-        const assetPath = join(uiDistDir, url.pathname)
-        if (existsSync(assetPath)) return new Response(Bun.file(assetPath))
-      }
-
-      // SPA fallback — index.html for all other routes
-      if (uiExists) {
-        return new Response(Bun.file(uiDiskPath), { headers: { 'Content-Type': 'text/html; charset=utf-8' } })
-      }
-
-      return new Response('UI not available.', { status: 404 })
+    routes: {
+      '/api/status': { GET: () => statusResponse(state) },
+      '/*': index,
     },
   })
 
