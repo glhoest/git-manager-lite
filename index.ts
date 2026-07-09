@@ -34,7 +34,10 @@ enum Command {
   Help = 'help',
   Config = 'config',
   Serve = 'serve',
+  Sevre = 'sevre',
   Daemon = 'daemon',
+  Deamon = 'deamon',
+  Demon = 'demon',
 }
 
 const CLI_NAME = 'gml';
@@ -163,9 +166,24 @@ const man: Record<Command, ManPage> & { default: ManPage } = {
       '--no-open      — do not auto-open browser',
     ],
   },
+  [Command.Sevre]: {
+    description: "Alias of 'serve' (common typo).",
+    usage: `${CLI_NAME} sevre [--port <number>] [--no-open]`,
+    options: [],
+  },
   [Command.Daemon]: {
     description: "Alias of 'serve'.",
     usage: `${CLI_NAME} daemon [--port <number>] [--no-open]`,
+    options: [],
+  },
+  [Command.Deamon]: {
+    description: "Alias of 'serve' (common typo).",
+    usage: `${CLI_NAME} deamon [--port <number>] [--no-open]`,
+    options: [],
+  },
+  [Command.Demon]: {
+    description: "Alias of 'serve' (common typo).",
+    usage: `${CLI_NAME} demon [--port <number>] [--no-open]`,
     options: [],
   },
   [Command.Config]: {
@@ -352,7 +370,10 @@ switch (commands[0]) {
     configCommand(args.slice(1));
     break;
   case Command.Serve:
+  case Command.Sevre:
   case Command.Daemon:
+  case Command.Deamon:
+  case Command.Demon:
     serveCommand(args.slice(1));
     break;
   default:
