@@ -19,3 +19,4 @@ export { scheduleCommand } from './schedule.ts';
 export { cleanGmlStashes, listGmlStashes } from './stashes.ts';
 export { switchToMain } from './switchToMain.ts';
 export { syncRepos } from './syncRepos.ts';
+export { serveCommand } from './serve.ts';

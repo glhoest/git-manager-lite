@@ -4,13 +4,14 @@ import {
   branches,
   cleanGmlStashes,
   cleanupBranches,
-  configCommand, // Add this
+  configCommand,
   initPreset,
   listGmlStashes,
   listRepos,
   listVersion,
   manageBranches,
   scheduleCommand,
+  serveCommand,
   switchToMain,
   syncRepos,
 } from './commands';
@@ -31,7 +32,9 @@ enum Command {
   Schedule = 'schedule',
   Version = 'version',
   Help = 'help',
-  Config = 'config', // Add this
+  Config = 'config',
+  Serve = 'serve',
+  Daemon = 'daemon',
 }
 
 const CLI_NAME = 'gml';
@@ -152,6 +155,19 @@ const man: Record<Command, ManPage> & { default: ManPage } = {
     usage: `${CLI_NAME} help [command]`,
     options: ['-h, --help — show general help or help for a command'],
   },
+  [Command.Serve]: {
+    description: 'Start the GML web UI daemon and open it in the browser.',
+    usage: `${CLI_NAME} serve [--port <number>] [--no-open]`,
+    options: [
+      '--port <number> — port to listen on (default: 4321)',
+      '--no-open      — do not auto-open browser',
+    ],
+  },
+  [Command.Daemon]: {
+    description: "Alias of 'serve'.",
+    usage: `${CLI_NAME} daemon [--port <number>] [--no-open]`,
+    options: [],
+  },
   [Command.Config]: {
     description: 'Manage GML configuration (.gml file) and presets.',
     usage: `${CLI_NAME} config <subcommand>`,
@@ -199,7 +215,8 @@ function showHelp(cmds?: Command[]) {
       Command.Branches,
       Command.Stashes,
       Command.Schedule,
-      Command.Config, // Add this
+      Command.Config,
+      Command.Serve,
       Command.Version,
       Command.Help,
     ];
@@ -333,6 +350,10 @@ switch (commands[0]) {
     break;
   case Command.Config:
     configCommand(args.slice(1));
+    break;
+  case Command.Serve:
+  case Command.Daemon:
+    serveCommand(args.slice(1));
     break;
   default:
     console.error(`Unknown command: ${commands.join(' ')}`);
