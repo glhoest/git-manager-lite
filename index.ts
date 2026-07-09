@@ -27,7 +27,6 @@ enum Command {
   Config = 'config',
   Serve = 'serve',
   Version = 'version',
-  Help = 'help',
 }
 
 enum BranchesSubcommand {
@@ -37,17 +36,6 @@ enum BranchesSubcommand {
 
 enum StashesSubcommand {
   Clean = 'clean',
-}
-
-enum ScheduleSubcommand {
-  Setup = 'setup',
-  Remove = 'remove',
-  Run = 'run',
-}
-
-enum ConfigSubcommand {
-  Init = 'init',
-  Presets = 'presets',
 }
 
 // Aliases shown in help output
@@ -144,11 +132,6 @@ const man: Record<Command, ManPage> & { default: ManPage } = {
     description: 'Show the current CLI version.',
     usage: `${CLI_NAME} version`,
     options: [],
-  },
-  [Command.Help]: {
-    description: 'Show help for the CLI or a specific command.',
-    usage: `${CLI_NAME} help [command]`,
-    options: ['-h, --help — show general help or help for a command'],
   },
   [Command.Serve]: {
     description: 'Start the GML web UI daemon and open it in the browser.',
@@ -264,15 +247,16 @@ function banner() {
   );
 }
 
+// `gml --help`, `gml <command> --help`, `gml <command> -h`
+// Must run before the "no command" guard so bare `--help` exits 0.
+if (args.includes('--help') || args.includes('-h')) {
+  showHelp(resolvedCommand);
+  process.exit(0);
+}
+
 if (!resolvedCommand) {
   showHelp();
   process.exit(1);
-}
-
-// Support: `gml <command> --help` or `-h`
-if (args.includes('--help') || args.includes('-h')) {
-  showHelp(resolvedCommand ?? undefined);
-  process.exit(0);
 }
 
 // Resolve preset from --preset arg (or defaultPreset from .gml config).
@@ -283,10 +267,6 @@ initPreset(parsePresetArg(args));
  * Warning: THERE IS NO TOP LEVEL AWAIT, unhandled promises are expected but we must be careful
  */
 switch (resolvedCommand!) {
-  case Command.Help:
-    showHelp();
-    break;
-
   case Command.Sync:
   case Command.Fetch:
     syncRepos({
