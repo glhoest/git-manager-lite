@@ -87,7 +87,6 @@ export async function serveCommand(args: string[]) {
       '/api/status': { GET: () => statusResponse(state) },
       '/api/repos': {
         GET: async () => {
-          return statusResponse('FOO');
           try {
             const repoPaths = getReposFromRoot(cwd);
             const repos = await Promise.all(
