@@ -43,7 +43,7 @@ const ALIASES: Record<string, Command> = {
   master: Command.Main,
   ls: Command.List,
   daemon: Command.Serve,
-}
+};
 
 // Typo tolerance — silently accepted, never shown in help
 const HIDDEN_ALIASES: Record<string, Command> = {
@@ -51,7 +51,7 @@ const HIDDEN_ALIASES: Record<string, Command> = {
   sevre: Command.Serve,
   deamon: Command.Serve,
   demon: Command.Serve,
-}
+};
 
 const CLI_NAME = 'gml';
 
@@ -83,7 +83,8 @@ const man: Record<Command, ManPage> & { default: ManPage } = {
     ],
   },
   [Command.Fetch]: {
-    description: "Shorthand for 'sync --fetch-only'. Fetches all remotes without pulling.",
+    description:
+      "Shorthand for 'sync --fetch-only'. Fetches all remotes without pulling.",
     usage: `${CLI_NAME} fetch`,
     options: [],
   },
@@ -114,9 +115,7 @@ const man: Record<Command, ManPage> & { default: ManPage } = {
     description:
       'List or clean up GML auto-stashes left behind by interrupted sync operations.',
     usage: `${CLI_NAME} stashes [clean]`,
-    options: [
-      'clean — Drop all GML auto-stashes (with confirmation)',
-    ],
+    options: ['clean — Drop all GML auto-stashes (with confirmation)'],
   },
   [Command.Schedule]: {
     description:
@@ -165,30 +164,33 @@ const man: Record<Command, ManPage> & { default: ManPage } = {
 };
 
 function resolveCommand(raw: string): Command | undefined {
-  const lower = raw.toLowerCase().trim()
-  const canonicals = Object.values(Command) as string[]
-  if (canonicals.includes(lower)) return lower as Command
-  return ALIASES[lower] ?? HIDDEN_ALIASES[lower]
+  const lower = raw.toLowerCase().trim();
+  const canonicals = Object.values(Command) as string[];
+  if (canonicals.includes(lower)) return lower as Command;
+  return ALIASES[lower] ?? HIDDEN_ALIASES[lower];
 }
 
 function getAliasesForCommand(cmd: Command): string[] {
   return Object.entries(ALIASES)
     .filter(([, target]) => target === cmd)
-    .map(([alias]) => alias)
+    .map(([alias]) => alias);
 }
 
-const resolvedCommand = resolveCommand(args[0] ?? '')
+const resolvedCommand = resolveCommand(args[0] ?? '');
 
 function showHelp(cmd?: Command) {
   if (!cmd) {
     banner();
     listVersion();
     console.log(`\n${chalk.bold('Commands:')}`);
-    const canonicals = Object.values(Command) as Command[]
+    const canonicals = Object.values(Command) as Command[];
     for (const c of canonicals) {
       const p = man[c];
-      const aliases = getAliasesForCommand(c)
-      const aliasStr = aliases.length > 0 ? chalk.gray(` [aliases: ${aliases.join(', ')}]`) : ''
+      const aliases = getAliasesForCommand(c);
+      const aliasStr =
+        aliases.length > 0
+          ? chalk.gray(` [aliases: ${aliases.join(', ')}]`)
+          : '';
       console.log(`  ${c.padEnd(8)} - ${p.description}${aliasStr}`);
       console.log(`    ${chalk.gray(p.usage)}`);
     }
@@ -203,7 +205,7 @@ function showHelp(cmd?: Command) {
     console.log(chalk.bold('Options:'));
     for (const opt of page.options) console.log(`  ${opt}`);
   }
-  const aliases = getAliasesForCommand(cmd)
+  const aliases = getAliasesForCommand(cmd);
   if (aliases.length > 0) {
     console.log(`${chalk.bold('Aliases:')} ${aliases.join(', ')}`);
   }

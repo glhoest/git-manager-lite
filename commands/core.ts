@@ -499,3 +499,143 @@ export function stashDrop(repoPath: string, stashRef?: string) {
   if (stashRef?.length) runGit(repoPath, ['stash', 'drop', stashRef], true);
   else runGit(repoPath, ['stash', 'drop'], true);
 }
+
+export async function syncRepoCore(
+  repoPath: string,
+  sessionId: string,
+): Promise<{ success: boolean; error?: string; log: string }> {
+  let logStr = '';
+  const log = (line: string) => {
+    if (line.trim()) logStr += line + (line.endsWith('\n') ? '' : '\n');
+  };
+
+  try {
+    // 1. Fetch
+    await runGitAsync(repoPath, ['fetch', '--all'], { onLog: log });
+
+    // 2. Stash local changes
+    const stashMessage = `${GML_STASH_PREFIX}${sessionId}`;
+    const stash = stashSave(repoPath, stashMessage);
+    let stashed = false;
+    if (stash.ok && stash.ref) {
+      stashed = true;
+      log(`Stashed local changes: ${stash.ref}`);
+    }
+
+    // 3. Pull
+    const pullRes = await runGitAsync(repoPath, ['pull'], { onLog: log });
+
+    // 4. Update default branch if not on it
+    const mainBranch = getDefaultBranch(repoPath);
+    const currentBranch = (
+      await runGitAsync(repoPath, ['branch', '--show-current'], {
+        silent: true,
+      })
+    ).stdout.trim();
+    if (currentBranch !== mainBranch) {
+      await runGitAsync(
+        repoPath,
+        ['fetch', 'origin', `${mainBranch}:${mainBranch}`],
+        { onLog: log },
+      );
+    }
+
+    // 5. Re-apply stash
+    let stashError = '';
+    if (stashed) {
+      const apply = stashApply(repoPath, stash.ref);
+      if (apply.ok) {
+        log('Re-applied stashed changes.');
+        stashDrop(repoPath, stash.ref);
+      } else {
+        stashError = 'Conflict while re-applying stashed changes.';
+        log(`\n[ERROR] ${stashError}`);
+      }
+    }
+
+    const success = pullRes.status === 0 && !stashError;
+    if (success) {
+      updateRepoState(repoPath, {
+        lastSyncSuccess: true,
+        lastSyncError: undefined,
+        lastSyncTime: new Date().toISOString(),
+      });
+    } else {
+      const error = stashError || `Pull failed with status ${pullRes.status}`;
+      updateRepoState(repoPath, {
+        lastSyncSuccess: false,
+        lastSyncError: error,
+        lastSyncTime: new Date().toISOString(),
+      });
+      return { success: false, error, log: logStr };
+    }
+    return { success: true, log: logStr };
+  } catch (e: any) {
+    const msg = e.message || String(e);
+    log(`\n[EXCEPTION] ${msg}`);
+    updateRepoState(repoPath, {
+      lastSyncSuccess: false,
+      lastSyncError: msg,
+      lastSyncTime: new Date().toISOString(),
+    });
+    return { success: false, error: msg, log: logStr };
+  }
+}
+
+export async function switchToMainCore(
+  repoPath: string,
+): Promise<{ success: boolean; error?: string; log: string }> {
+  let logStr = '';
+  const log = (line: string) => {
+    if (line.trim()) logStr += line + (line.endsWith('\n') ? '' : '\n');
+  };
+
+  try {
+    // 1. git fetch --all
+    await runGitAsync(repoPath, ['fetch', '--all'], { onLog: log });
+
+    // 2. Get default branch via getDefaultBranch
+    const defaultBranch = getDefaultBranch(repoPath);
+
+    // 3. git checkout -f <defaultBranch>
+    const checkoutRes = await runGitAsync(
+      repoPath,
+      ['checkout', '-f', defaultBranch],
+      { onLog: log },
+    );
+
+    // 4. git reset --hard origin/<defaultBranch>
+    const resetRes = await runGitAsync(
+      repoPath,
+      ['reset', '--hard', `origin/${defaultBranch}`],
+      { onLog: log },
+    );
+
+    const success = checkoutRes.status === 0 && resetRes.status === 0;
+    if (success) {
+      updateRepoState(repoPath, {
+        lastSyncSuccess: true,
+        lastSyncError: undefined,
+        lastSyncTime: new Date().toISOString(),
+      });
+    } else {
+      const error = `Checkout status: ${checkoutRes.status}, Reset status: ${resetRes.status}`;
+      updateRepoState(repoPath, {
+        lastSyncSuccess: false,
+        lastSyncError: error,
+        lastSyncTime: new Date().toISOString(),
+      });
+      return { success: false, error, log: logStr };
+    }
+    return { success: true, log: logStr };
+  } catch (e: any) {
+    const msg = e.message || String(e);
+    log(`\n[EXCEPTION] ${msg}`);
+    updateRepoState(repoPath, {
+      lastSyncSuccess: false,
+      lastSyncError: msg,
+      lastSyncTime: new Date().toISOString(),
+    });
+    return { success: false, error: msg, log: logStr };
+  }
+}
