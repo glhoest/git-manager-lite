@@ -46,9 +46,9 @@ function SkeletonRow() {
       <td className="py-2.5 px-4">
         <div className="h-5 bg-muted rounded-full w-24 animate-pulse" />
       </td>
-      <td className="py-2.5 px-4">
-        <div className="h-4 bg-muted rounded w-12 animate-pulse" />
-      </td>
+      <td className="py-2.5 px-4"><div className="h-4 bg-muted rounded w-6 mx-auto animate-pulse" /></td>
+      <td className="py-2.5 px-4"><div className="h-4 bg-muted rounded w-6 mx-auto animate-pulse" /></td>
+      <td className="py-2.5 px-4"><div className="h-4 bg-muted rounded w-6 mx-auto animate-pulse" /></td>
       <td className="py-2.5 px-4 text-right">
         <div className="flex justify-end gap-1.5">
           <div className="h-7 bg-muted rounded w-14 animate-pulse" />
@@ -361,15 +361,15 @@ export default function App() {
                 <tr className="border-b bg-muted/40 text-muted-foreground text-[11px] font-bold uppercase tracking-wider">
                   <th className="py-3 px-4">Repo</th>
                   <th className="py-3 px-4">Branch</th>
-                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4 text-center">Ahead</th>
+                  <th className="py-3 px-4 text-center">Behind</th>
+                  <th className="py-3 px-4 text-center">Dirty</th>
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y text-sm">
                 {filteredRepos.map((repo) => {
                   const isActing = actingPaths.has(repo.path) || globalActing;
-                  const showSyncStatus =
-                    repo.ahead > 0 || repo.behind > 0 || repo.uncommitted > 0;
                   return (
                     <tr
                       key={repo.path}
@@ -384,30 +384,31 @@ export default function App() {
                           {repo.branch}
                         </span>
                       </td>
-                      <td className="py-2.5 px-4">
-                        {showSyncStatus ? (
-                          <div className="flex gap-2 text-xs font-mono font-medium">
-                            {repo.ahead > 0 && (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-green-50 text-green-700 border border-green-100">
-                                ↑{repo.ahead}
-                              </span>
-                            )}
-                            {repo.behind > 0 && (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-red-50 text-red-700 border border-red-100">
-                                ↓{repo.behind}
-                              </span>
-                            )}
-                            {repo.uncommitted > 0 && (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-100">
-                                ~{repo.uncommitted}
-                              </span>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 text-xs text-green-600 font-medium">
-                            <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                            Clean
+                      <td className="py-2.5 px-4 text-center">
+                        {repo.ahead > 0 ? (
+                          <span className="inline-flex items-center gap-0.5 text-xs font-mono font-medium text-green-700">
+                            <span>↑</span>{repo.ahead}
                           </span>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">—</span>
+                        )}
+                      </td>
+                      <td className="py-2.5 px-4 text-center">
+                        {repo.behind > 0 ? (
+                          <span className="inline-flex items-center gap-0.5 text-xs font-mono font-medium text-red-700">
+                            <span>↓</span>{repo.behind}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">—</span>
+                        )}
+                      </td>
+                      <td className="py-2.5 px-4 text-center">
+                        {repo.uncommitted > 0 ? (
+                          <span className="inline-flex items-center gap-0.5 text-xs font-mono font-medium text-amber-700">
+                            <span>~</span>{repo.uncommitted}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">—</span>
                         )}
                       </td>
                       <td className="py-2.5 px-4 text-right">

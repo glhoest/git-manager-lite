@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, join } from 'node:path';
+import { version } from '../package.json';
 import index from '../ui/index.html';
 import {
   getBranchStatusAsync,
@@ -48,7 +49,7 @@ function openBrowser(url: string) {
 }
 
 function statusResponse(state: DaemonState) {
-  return Response.json({ ...state, version: '0.2.21' });
+  return Response.json({ ...state, version });
 }
 
 function getReposFromRoot(root: string): string[] {
