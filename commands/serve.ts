@@ -84,23 +84,47 @@ export async function serveCommand(args: string[]) {
   const server = Bun.serve({
     port,
     hostname: '127.0.0.1',
+    idleTimeout: 0,
     routes: {
       '/api/status': { GET: () => statusResponse(state) },
       '/api/repos/stream': {
         GET: async () => {
           const repoPaths = getReposFromRoot(cwd);
-          let controller!: ReadableStreamDefaultController<Uint8Array>;
           const encoder = new TextEncoder();
+          let isClosed = false;
 
+          let controller!: ReadableStreamDefaultController<Uint8Array>;
           const stream = new ReadableStream<Uint8Array>({
             start(c) {
               controller = c;
             },
+            cancel() {
+              isClosed = true;
+            },
           });
 
-          // fire all in parallel, emit each as it resolves
+          const safeEnqueue = (text: string) => {
+            if (isClosed) return;
+            try {
+              controller.enqueue(encoder.encode(text));
+            } catch {
+              isClosed = true;
+            }
+          };
+
+          const safeClose = () => {
+            if (isClosed) return;
+            isClosed = true;
+            try {
+              controller.close();
+            } catch {
+              /* ignore */
+            }
+          };
+
           const total = repoPaths.length;
           let done = 0;
+
           for (const p of repoPaths) {
             (async () => {
               try {
@@ -116,25 +140,22 @@ export async function serveCommand(args: string[]) {
                   uncommitted: status.uncommitted,
                   defaultBranch: defB,
                 };
-                const data = `data: ${JSON.stringify(repo)}\n\n`;
-                controller.enqueue(encoder.encode(data));
+                safeEnqueue(`data: ${JSON.stringify(repo)}\n\n`);
               } catch (e: any) {
-                const err = `data: ${JSON.stringify({ error: e.message, path: p })}\n\n`;
-                controller.enqueue(encoder.encode(err));
+                safeEnqueue(`data: ${JSON.stringify({ error: String(e?.message ?? e), path: p })}\n\n`);
               } finally {
                 done++;
                 if (done === total) {
-                  controller.enqueue(encoder.encode('data: {"done":true}\n\n'));
-                  controller.close();
+                  safeEnqueue('data: {"done":true}\n\n');
+                  safeClose();
                 }
               }
             })();
           }
 
-          // handle empty repo list
           if (total === 0) {
-            controller!.enqueue(encoder.encode('data: {"done":true}\n\n'));
-            controller!.close();
+            safeEnqueue('data: {"done":true}\n\n');
+            safeClose();
           }
 
           return new Response(stream, {
