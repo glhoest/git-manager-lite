@@ -1,8 +1,13 @@
-import { AlertCircle, GitBranch, GitFork, Loader2, RefreshCw, Search } from 'lucide-react';
+import {
+  AlertCircle,
+  GitBranch,
+  GitFork,
+  Loader2,
+  RefreshCw,
+  Search,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from './components/ui/button';
-
-const VERSION = '0.2.21';
 
 type RepoInfo = {
   name: string;
@@ -17,10 +22,12 @@ type RepoInfo = {
 
 type StatusResponse = {
   cwd: string;
+  version: string;
 };
 
 function branchBadgeClass(branch: string) {
-  const base = "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-mono font-medium border";
+  const base =
+    'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-mono font-medium border';
   if (branch === 'main' || branch === 'master') {
     return `${base} bg-green-50 text-green-700 border-green-200`;
   }
@@ -28,6 +35,28 @@ function branchBadgeClass(branch: string) {
     return `${base} bg-red-50 text-red-700 border-red-200`;
   }
   return `${base} bg-amber-50 text-amber-700 border-amber-200`;
+}
+
+function SkeletonRow() {
+  return (
+    <tr className="border-b">
+      <td className="py-2.5 px-4">
+        <div className="h-4 bg-muted rounded w-32 animate-pulse" />
+      </td>
+      <td className="py-2.5 px-4">
+        <div className="h-5 bg-muted rounded-full w-24 animate-pulse" />
+      </td>
+      <td className="py-2.5 px-4">
+        <div className="h-4 bg-muted rounded w-12 animate-pulse" />
+      </td>
+      <td className="py-2.5 px-4 text-right">
+        <div className="flex justify-end gap-1.5">
+          <div className="h-7 bg-muted rounded w-14 animate-pulse" />
+          <div className="h-7 bg-muted rounded w-14 animate-pulse" />
+        </div>
+      </td>
+    </tr>
+  );
 }
 
 export default function App() {
@@ -38,37 +67,46 @@ export default function App() {
   const [actingPaths, setActingPaths] = useState<Set<string>>(new Set());
   const [globalActing, setGlobalActing] = useState(false);
   const [status, setStatus] = useState<StatusResponse | null>(null);
+  const [managingRepo, setManagingRepo] = useState<RepoInfo | null>(null);
 
   useEffect(() => {
-    const fetchRepos = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const res = await fetch('/api/repos');
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        setRepos(data);
-      } catch (err: any) {
-        setError(err.message || String(err));
-      } finally {
+    setLoading(true);
+    setRepos([]);
+    setError(null);
+
+    const es = new EventSource('/api/repos/stream');
+
+    es.onmessage = (e) => {
+      const data = JSON.parse(e.data);
+      if (data.done) {
         setLoading(false);
+        es.close();
+        return;
       }
+      if (data.error) return; // skip errored repos silently
+      setRepos((prev) => {
+        // insert in sorted order by name
+        const next = [...prev, data as RepoInfo];
+        next.sort((a, b) => a.name.localeCompare(b.name));
+        return next;
+      });
     };
 
-    const fetchStatus = async () => {
-      try {
-        const res = await fetch('/api/status');
-        if (res.ok) {
-          const data = await res.json();
-          setStatus(data);
-        }
-      } catch (err) {
-        // ignore
-      }
+    es.onerror = () => {
+      setError('Failed to connect to server');
+      setLoading(false);
+      es.close();
     };
 
-    fetchRepos();
-    fetchStatus();
+    // fetch status separately
+    fetch('/api/status')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d) setStatus(d);
+      })
+      .catch(() => {});
+
+    return () => es.close();
   }, []);
 
   const triggerFetchRepos = async () => {
@@ -208,7 +246,7 @@ export default function App() {
                   Git Manager Lite
                 </span>
                 <span className="inline-flex items-center rounded bg-muted px-1.5 py-0.5 text-xs font-mono font-medium text-muted-foreground border">
-                  v{VERSION}
+                  v{status?.version ?? '...'}
                 </span>
                 <span className="inline-flex items-center rounded bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground border">
                   {repos.length} repos
@@ -262,7 +300,9 @@ export default function App() {
           <div className="flex items-start gap-3 rounded-lg border-l-4 border-l-destructive border border-border bg-card p-4 mb-6 shadow-sm">
             <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
             <div className="flex-1">
-              <h3 className="text-sm font-semibold text-foreground">Sync Error</h3>
+              <h3 className="text-sm font-semibold text-foreground">
+                Sync Error
+              </h3>
               <p className="text-sm text-muted-foreground mt-0.5">{error}</p>
             </div>
             <Button
@@ -276,30 +316,24 @@ export default function App() {
           </div>
         )}
 
-        {/* Loading State Skeleton */}
-        {loading && repos.length === 0 && (
-          <div className="border border-border rounded-lg bg-card overflow-hidden">
-            <div className="border-b bg-muted/20 px-4 py-2.5">
-              <div className="grid grid-cols-4 gap-4">
-                <div className="h-3 bg-muted rounded w-16 animate-pulse" />
-                <div className="h-3 bg-muted rounded w-16 animate-pulse" />
-                <div className="h-3 bg-muted rounded w-16 animate-pulse" />
-                <div className="h-3 bg-muted rounded w-16 ml-auto animate-pulse" />
-              </div>
+        {/* Error State */}
+        {error && (
+          <div className="flex items-start gap-3 rounded-lg border-l-4 border-l-destructive border border-border bg-card p-4 mb-6 shadow-sm">
+            <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold text-foreground">
+                Sync Error
+              </h3>
+              <p className="text-sm text-muted-foreground mt-0.5">{error}</p>
             </div>
-            <div className="divide-y divide-border">
-              {['skeleton-1', 'skeleton-2', 'skeleton-3', 'skeleton-4', 'skeleton-5', 'skeleton-6'].map((key) => (
-                <div key={key} className="px-4 py-3.5 grid grid-cols-4 gap-4 items-center">
-                  <div className="h-4 bg-muted rounded w-32 animate-pulse" />
-                  <div className="h-4 bg-muted rounded w-24 animate-pulse" />
-                  <div className="h-4 bg-muted rounded w-12 animate-pulse" />
-                  <div className="flex justify-end gap-2">
-                    <div className="h-7 bg-muted rounded w-16 animate-pulse" />
-                    <div className="h-7 bg-muted rounded w-16 animate-pulse" />
-                  </div>
-                </div>
-              ))}
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={triggerFetchRepos}
+              className="shrink-0"
+            >
+              Retry
+            </Button>
           </div>
         )}
 
@@ -309,115 +343,140 @@ export default function App() {
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted mb-4">
               <Search className="h-5 w-5 text-muted-foreground" />
             </div>
-            <h3 className="text-sm font-semibold text-foreground">No matches found</h3>
+            <h3 className="text-sm font-semibold text-foreground">
+              No matches found
+            </h3>
             <p className="text-xs text-muted-foreground mt-1 max-w-xs">
-              No repositories or branches match your search criteria. Try a different term.
+              No repositories or branches match your search criteria. Try a
+              different term.
             </p>
           </div>
         )}
 
         {/* Repo Table */}
-        {!loading && filteredRepos.length > 0 && (
-          <div className="rounded-lg border bg-card overflow-hidden shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b bg-muted/40 text-muted-foreground text-[11px] font-bold uppercase tracking-wider">
-                    <th className="py-3 px-4">Repo</th>
-                    <th className="py-3 px-4">Branch</th>
-                    <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y text-sm">
-                  {filteredRepos.map((repo) => {
-                    const isActing = actingPaths.has(repo.path) || globalActing;
-                    const showSyncStatus =
-                      repo.ahead > 0 || repo.behind > 0 || repo.uncommitted > 0;
-                    return (
-                      <tr
-                        key={repo.path}
-                        className="hover:bg-muted/10 transition-colors"
-                      >
-                        <td className="py-2.5 px-4 font-medium text-foreground">
-                          {repo.name}
-                        </td>
-                        <td className="py-2.5 px-4">
-                          <span className={branchBadgeClass(repo.branch)}>
-                            <GitBranch className="h-3 w-3" />
-                            {repo.branch}
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-4">
-                          {showSyncStatus ? (
-                            <div className="flex gap-2 text-xs font-mono font-medium">
-                              {repo.ahead > 0 && (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-green-50 text-green-700 border border-green-100">
-                                  ↑{repo.ahead}
-                                </span>
-                              )}
-                              {repo.behind > 0 && (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-red-50 text-red-700 border border-red-100">
-                                  ↓{repo.behind}
-                                </span>
-                              )}
-                              {repo.uncommitted > 0 && (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-100">
-                                  ~{repo.uncommitted}
-                                </span>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="inline-flex items-center gap-1.5 text-xs text-green-600 font-medium">
-                              <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                              Clean
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-2.5 px-4 text-right">
-                          <div className="flex justify-end gap-1.5">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleMainRepo(repo)}
-                              disabled={isActing}
-                              className="font-mono text-xs hover:bg-muted"
-                            >
-                              {repo.defaultBranch}
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleSyncRepo(repo)}
-                              disabled={isActing}
-                              className="gap-1 shadow-none border-border/80 hover:bg-muted"
-                            >
-                              {actingPaths.has(repo.path) ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                              ) : (
-                                <RefreshCw className="h-3 w-3" />
-                              )}
-                              Sync
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              disabled
-                              className="text-muted-foreground/40 hover:bg-transparent"
-                            >
-                              Manage
-                            </Button>
+        <div className="rounded-lg border bg-card overflow-hidden shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b bg-muted/40 text-muted-foreground text-[11px] font-bold uppercase tracking-wider">
+                  <th className="py-3 px-4">Repo</th>
+                  <th className="py-3 px-4">Branch</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y text-sm">
+                {filteredRepos.map((repo) => {
+                  const isActing = actingPaths.has(repo.path) || globalActing;
+                  const showSyncStatus =
+                    repo.ahead > 0 || repo.behind > 0 || repo.uncommitted > 0;
+                  return (
+                    <tr
+                      key={repo.path}
+                      className="hover:bg-muted/10 transition-colors"
+                    >
+                      <td className="py-2.5 px-4 font-medium text-foreground">
+                        {repo.name}
+                      </td>
+                      <td className="py-2.5 px-4">
+                        <span className={branchBadgeClass(repo.branch)}>
+                          <GitBranch className="h-3 w-3" />
+                          {repo.branch}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-4">
+                        {showSyncStatus ? (
+                          <div className="flex gap-2 text-xs font-mono font-medium">
+                            {repo.ahead > 0 && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-green-50 text-green-700 border border-green-100">
+                                ↑{repo.ahead}
+                              </span>
+                            )}
+                            {repo.behind > 0 && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-red-50 text-red-700 border border-red-100">
+                                ↓{repo.behind}
+                              </span>
+                            )}
+                            {repo.uncommitted > 0 && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-100">
+                                ~{repo.uncommitted}
+                              </span>
+                            )}
                           </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 text-xs text-green-600 font-medium">
+                            <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                            Clean
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2.5 px-4 text-right">
+                        <div className="flex justify-end gap-1.5">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleMainRepo(repo)}
+                            disabled={isActing}
+                            className="font-mono text-xs hover:bg-muted"
+                          >
+                            {repo.defaultBranch}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleSyncRepo(repo)}
+                            disabled={isActing}
+                            className="gap-1 shadow-none border-border/80 hover:bg-muted"
+                          >
+                            {actingPaths.has(repo.path) ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <RefreshCw className="h-3 w-3" />
+                            )}
+                            Sync
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setManagingRepo(repo)}
+                            className="text-muted-foreground hover:bg-muted"
+                          >
+                            Manage
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {loading &&
+                  Array.from({ length: Math.max(0, 6 - repos.length) }).map(
+                    (_, i) => <SkeletonRow key={`row-${repos.length}-${i}`} />,
+                  )}
+              </tbody>
+            </table>
           </div>
-        )}
+        </div>
       </main>
+
+      {managingRepo && (
+        <div className="fixed inset-y-0 right-0 w-80 bg-card border-l border-border shadow-xl z-50 flex flex-col">
+          <div className="flex items-center justify-between border-b px-4 py-3">
+            <span className="font-semibold text-sm">{managingRepo.name}</span>
+            <button
+              type="button"
+              onClick={() => setManagingRepo(null)}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 text-muted-foreground p-6 text-center">
+            <GitBranch className="h-8 w-8" />
+            <p className="text-sm font-medium">Branch management</p>
+            <p className="text-xs">Coming soon</p>
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <footer className="border-t py-6 mt-12 bg-muted/10">

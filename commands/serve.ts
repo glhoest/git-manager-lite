@@ -85,6 +85,66 @@ export async function serveCommand(args: string[]) {
     hostname: '127.0.0.1',
     routes: {
       '/api/status': { GET: () => statusResponse(state) },
+      '/api/repos/stream': {
+        GET: async () => {
+          const repoPaths = getReposFromRoot(cwd);
+          let controller!: ReadableStreamDefaultController<Uint8Array>;
+          const encoder = new TextEncoder();
+
+          const stream = new ReadableStream<Uint8Array>({
+            start(c) {
+              controller = c;
+            },
+          });
+
+          // fire all in parallel, emit each as it resolves
+          const total = repoPaths.length;
+          let done = 0;
+          for (const p of repoPaths) {
+            (async () => {
+              try {
+                const status = await getBranchStatusAsync(p);
+                const defB = getDefaultBranch(p);
+                const repo = {
+                  name: basename(p),
+                  path: p,
+                  branch: status.branch,
+                  upstream: status.upstream,
+                  ahead: status.ahead,
+                  behind: status.behind,
+                  uncommitted: status.uncommitted,
+                  defaultBranch: defB,
+                };
+                const data = `data: ${JSON.stringify(repo)}\n\n`;
+                controller.enqueue(encoder.encode(data));
+              } catch (e: any) {
+                const err = `data: ${JSON.stringify({ error: e.message, path: p })}\n\n`;
+                controller.enqueue(encoder.encode(err));
+              } finally {
+                done++;
+                if (done === total) {
+                  controller.enqueue(encoder.encode('data: {"done":true}\n\n'));
+                  controller.close();
+                }
+              }
+            })();
+          }
+
+          // handle empty repo list
+          if (total === 0) {
+            controller!.enqueue(encoder.encode('data: {"done":true}\n\n'));
+            controller!.close();
+          }
+
+          return new Response(stream, {
+            headers: {
+              'Content-Type': 'text/event-stream',
+              'Cache-Control': 'no-cache',
+              Connection: 'keep-alive',
+            },
+          });
+        },
+      },
       '/api/repos': {
         GET: async () => {
           try {
